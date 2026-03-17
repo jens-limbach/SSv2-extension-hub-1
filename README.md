@@ -32,6 +32,9 @@ Use this pattern when the result is needed immediately (e.g. field derivation, v
 
 Use this pattern for slow operations, external API calls, or anything that can run independently of the save transaction.
 
+### `POST /webhooks/external-alerts`
+**Synchronous** — Returns a list of external alert signals for an account. SAP SSC V2 calls this endpoint to display alerts in the UI (e.g. fraud flags, compliance warnings). Responds with `200 OK` and an `alerts` array; each entry has a `signalType`, `icon`, `color`, `groupText`, and `message`. Replace the hardcoded sample alerts with your real business logic.
+
 ## 🎯 CloudEvents Payload Structure
 
 SAP SSC V2 sends webhooks in CloudEvents format. Business data is nested under `data`:
