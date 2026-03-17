@@ -273,6 +273,56 @@ app.post('/webhooks/calculate-score-async', async (req, res) => {
   }
 })
 
+/**
+ * External alerts endpoint - returns alert signals for an account
+ * SAP SSC V2 calls this endpoint to display external alerts in the UI
+ */
+app.post('/webhooks/external-alerts', (req, res) => {
+  try {
+    const data = req.body.data || req.body
+    const accountId = data?.currentImage?.id || data?.objectId
+    const displayId = data?.currentImage?.displayId || data?.displayId
+
+    console.log(`✅ External alerts requested for account ${displayId || accountId || 'unknown'}`)
+
+    const response = {
+      count: 2,
+      alerts: [
+        {
+          signalType: 'extAlert',
+          object: {
+            objectType: 'ACCOUNT',
+            displayId: displayId || '',
+            objectId: accountId || ''
+          },
+          groupText: 'High',
+          icon: 'error_filled',
+          color: 'yellow',
+          message: 'Fraud'
+        },
+        {
+          signalType: 'extAlert',
+          object: {
+            objectType: 'ACCOUNT',
+            displayId: displayId || '',
+            objectId: accountId || ''
+          },
+          groupText: 'Medium',
+          icon: 'error_filled',
+          color: 'red',
+          message: 'Photo not approved'
+        }
+      ]
+    }
+
+    res.status(200).json(response)
+
+  } catch (error) {
+    console.error('❌ External alerts error:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
 // ============================================================================
 // START SERVER
 // ============================================================================
@@ -281,5 +331,6 @@ app.listen(PORT, () => {
   console.log(`\n🚀 CRM Webhook Service running on port ${PORT}`)
   console.log(`📍 Health check: http://localhost:${PORT}/health`)
   console.log(`📍 Sync webhook: http://localhost:${PORT}/webhooks/calculate-score-sync`)
-  console.log(`📍 Async webhook: http://localhost:${PORT}/webhooks/calculate-score-async\n`)
+  console.log(`📍 Async webhook: http://localhost:${PORT}/webhooks/calculate-score-async`)
+  console.log(`📍 External alerts: http://localhost:${PORT}/webhooks/external-alerts\n`)
 })

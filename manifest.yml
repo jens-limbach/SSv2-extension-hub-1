@@ -1,6 +1,6 @@
 ---
 applications:
-- name: crm-webhook-service
+- name: crm-extension-hub1
   memory: 128M
   instances: 1
   buildpack: nodejs_buildpack
