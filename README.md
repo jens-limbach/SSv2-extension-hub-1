@@ -68,7 +68,3 @@ package.json       ← Minimal dependencies (express, dotenv)
 manifest.yml       ← Cloud Foundry deployment config
 env-template.txt   ← Template for .env (never commit .env)
 ```
-
-## 📄 License
-
-MIT
