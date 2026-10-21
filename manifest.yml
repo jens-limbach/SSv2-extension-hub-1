@@ -1,6 +1,6 @@
 ---
 applications:
-- name: crm-extension-hub1
+- name: crm-extension-hub2
   memory: 128M
   instances: 1
   buildpack: nodejs_buildpack

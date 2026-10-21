@@ -1,7 +1,7 @@
 {
-  "name": "crm-webhook-service",
+  "name": "crm-extension-hub",
   "version": "1.0.0",
-  "description": "Minimal webhook service for SAP CRM integration demonstrating sync and async patterns",
+  "description": "Minimal webhook microservice for SAP Sales and Service Cloud V2 — demonstrates sync/async AutoFlows and UI Extension data providers",
   "private": true,
   "type": "module",
   "main": "server.js",
@@ -9,7 +9,10 @@
     "dev": "node server.js",
     "start": "node server.js"
   },
-  "keywords": ["sap", "crm", "webhook", "microservice"],
+  "engines": {
+    "node": "22.x"
+  },
+  "keywords": ["sap", "crm", "webhook", "microservice", "btp", "cloud-foundry"],
   "author": "",
   "license": "MIT",
   "dependencies": {
@@ -17,3 +20,4 @@
     "dotenv": "^16.3.1"
   }
 }
+

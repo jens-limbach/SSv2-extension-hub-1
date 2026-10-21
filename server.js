@@ -26,6 +26,9 @@ if (!CRM_BASE_URL || !CRM_USERNAME || !CRM_PASSWORD) {
 const authString = `${CRM_USERNAME}:${CRM_PASSWORD}`
 const authHeader = 'Basic ' + Buffer.from(authString).toString('base64')
 
+// Opportunity priority code for "Urgent" — adjust if your tenant uses a different value
+const PRIORITY_URGENT = '2'
+
 // Middleware
 app.use(express.json())
 
@@ -34,17 +37,17 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*')
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization')
-  
+
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
     return res.status(200).end()
   }
-  
+
   next()
 })
 
 // Startup logging
-console.log('✅ CRM Webhook Service Configuration:')
+console.log('✅ CRM Extension Hub Configuration:')
 console.log(`✅ CRM API configured: ${CRM_BASE_URL}`)
 console.log(`✅ Username: ${CRM_USERNAME}`)
 console.log('✅ Credentials loaded successfully')
@@ -104,18 +107,19 @@ function validateWebhookPayload(body) {
   }
 
   if (!data.currentImage.id) {
-    return { error: 'Missing account ID', field: 'currentImage.id' }
+    return { error: 'Missing object ID', field: 'currentImage.id' }
   }
 
   return null // Valid
 }
 
 /**
- * Calculates CustomScore based on ABC classification
+ * Calculates a CustomScore based on ABC classification.
+ * Replace this with your own business logic.
  */
 function calculateScore(abcClassification) {
   const classification = abcClassification?.toUpperCase()
-  
+
   switch (classification) {
     case 'A':
       return 90
@@ -130,41 +134,20 @@ function calculateScore(abcClassification) {
 }
 
 /**
- * Fetches an employee's manager displayId from CRM
+ * Creates a follow-up task linked to an opportunity in CRM.
+ * The task is assigned to the opportunity owner and due in 3 days.
  */
-async function getEmployeesManager(employeeId) {
-  const response = await callCrmApi(`/sap/c4c/api/v1/employee-service/employees/${employeeId}`)
-  const employeeData = await response.json()
-  return employeeData.managerEmployeeDisplayId || null
-}
-
-/**
- * Resolves an employee's internal ID from their displayId
- */
-async function getEmployeeID(employeeDisplayId) {
-  const encodedId = encodeURIComponent(employeeDisplayId)
-  const response = await callCrmApi(`/sap/c4c/api/v1/employee-service/employees?filter=employeeDisplayId eq '${encodedId}'`)
-  const result = await response.json()
-  return result.value?.length > 0 ? result.value[0].id : null
-}
-
-/**
- * Creates a focus account task in CRM
- */
-async function createFocusAccountTask(accountId, ownerId, organizerId) {
+async function createUrgentOpportunityTask(opportunityId, opportunityDisplayId, ownerId) {
   const dueDate = new Date()
-  dueDate.setDate(dueDate.getDate() + 7)
+  dueDate.setDate(dueDate.getDate() + 3)
   const dueDateTime = dueDate.toISOString().replace(/\.\d{3}/, '')
 
   const taskPayload = {
-    description: 'Focus Account Request',
-    taskCategory: 'Z0001',
-    status: 'INPROCESS',
+    subject: `Follow up: Urgent Opportunity – ${opportunityDisplayId}`,
+    status: 'OPEN',
     dueDateTime,
-    account: { id: accountId },
-    owner: { id: ownerId },
-    organizer: { id: organizerId },
-    notes: [{ content: 'Please confirm or decline your focus account.' }]
+    opportunity: { id: opportunityId },
+    owner: { id: ownerId }
   }
 
   const response = await callCrmApi('/sap/c4c/api/v1/task-service/tasks', {
@@ -175,64 +158,34 @@ async function createFocusAccountTask(accountId, ownerId, organizerId) {
   return result.value?.displayId || null
 }
 
-/**
- * Creates a contact person in CRM
- */
-async function createContact(givenName, familyName, eMail, accountId) {
-  const contactPayload = { givenName, familyName, eMail }
-  if (accountId) contactPayload.accountId = accountId
-
-  const response = await callCrmApi('/sap/c4c/api/v1/contact-person-service/contactPersons', {
-    method: 'POST',
-    body: JSON.stringify(contactPayload)
-  })
-  const result = await response.json()
-  return result.value?.id || null
-}
-
-/**
- * Adds a contact to an opportunity and returns the opportunity-contact ID
- */
-async function addContactToOpportunity(opportunityId, contactId) {
-  const response = await callCrmApi(`/sap/c4c/api/v1/opportunity-service/opportunities/${opportunityId}/contacts`, {
-    method: 'POST',
-    body: JSON.stringify({ partyId: contactId })
-  })
-  const result = await response.json()
-  return result.value?.id || null
-}
-
-/**
- * Sets a contact as the primary contact on an opportunity
- */
-async function setContactAsPrimary(opportunityId, contactOppId, etag) {
-  await callCrmApi(`/sap/c4c/api/v1/opportunity-service/opportunities/${opportunityId}/contacts/${contactOppId}`, {
-    method: 'PATCH',
-    headers: {
-      'If-Match': etag,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ isPrimary: true })
-  })
-}
-
 // ============================================================================
 // ENDPOINTS
 // ============================================================================
 
 /**
- * Health check endpoint
+ * Health check endpoint — required for Cloud Foundry
  */
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
-    service: 'CRM Webhook Service',
+    service: 'CRM Extension Hub',
     timestamp: new Date().toISOString()
   })
 })
 
 /**
- * Synchronous webhook - returns calculated score immediately
+ * SYNC AUTOFLOW — Account
+ *
+ * Triggered by a Synchronous AutoFlow in SSC V2.
+ * SSC V2 waits for this response before completing the save — the result
+ * is written directly into the record without a separate API call.
+ *
+ * Reads customerABCClassification from the currentImage, calculates a
+ * numeric CustomScore, and returns the modified currentImage so SSC V2
+ * persists the CustomScore field automatically.
+ *
+ * Must respond in under 2 seconds. No outbound API calls here.
+ * Response format: { "data": { ...currentImage } }
  */
 app.post('/webhooks/calculate-score-sync', (req, res) => {
   try {
@@ -246,39 +199,43 @@ app.post('/webhooks/calculate-score-sync', (req, res) => {
     // Support CloudEvents format (data wrapper) or direct format
     const data = req.body.data || req.body
 
-    // Extract ABC classification
+    // Extract ABC classification and calculate score
     const abcClassification = data.currentImage.customerABCClassification
-    
-    // Calculate score
     const calculatedScore = calculateScore(abcClassification)
 
-    console.log(`✅ Calculated score: ${calculatedScore} (ABC: ${abcClassification})`)
+    console.log(`✅ Sync score calculated: ${calculatedScore} (ABC: ${abcClassification})`)
 
-    console.log(`✅ Returning response with updated CustomScore...`)
-    // Create response data from currentImage and update only CustomScore
-    const responseData = {
-      ...data.currentImage,
-      extensions: {
-        ...data.currentImage.extensions,
-        CustomScore: calculatedScore
-      }
-    }
-    
-
-    // Return response in CRM expected format
+    // Return the modified currentImage — SSC V2 will persist CustomScore
     res.status(200).json({
-      data: responseData
+      data: {
+        ...data.currentImage,
+        extensions: {
+          ...data.currentImage.extensions,
+          CustomScore: calculatedScore
+        }
+      }
     })
-    console.log(`✅ Returned updated account data with CustomScore: ${calculatedScore}`)
 
   } catch (error) {
-    console.error('❌ Sync webhook error:', error)
+    console.error('❌ Sync score webhook error:', error)
     res.status(500).json({ error: 'Internal server error' })
   }
 })
 
 /**
- * Asynchronous webhook - accepts request and processes in background
+ * ASYNC AUTOFLOW — Account
+ *
+ * Triggered by an Asynchronous AutoFlow in SSC V2.
+ * SSC V2 does NOT wait — we respond 202 immediately so the user's save
+ * completes instantly, then process in the background.
+ *
+ * The background task calculates the score and writes it back to the CRM
+ * using a GET (to obtain a fresh ETag) followed by a PATCH with If-Match
+ * for optimistic locking.
+ *
+ * Use this pattern for slow operations, external API calls, or anything
+ * that can run independently of the user's save transaction.
+ * The 10-second delay below simulates a slow external operation.
  */
 app.post('/webhooks/calculate-score-async', async (req, res) => {
   try {
@@ -289,7 +246,7 @@ app.post('/webhooks/calculate-score-async', async (req, res) => {
       return res.status(400).json({ error: validationError.error })
     }
 
-    // Immediately respond to acknowledge receipt
+    // Respond immediately — SSC V2 gets 202 right away
     res.status(202).json({
       accepted: true,
       message: 'Processing in background'
@@ -302,183 +259,28 @@ app.post('/webhooks/calculate-score-async', async (req, res) => {
     const accountId = data.currentImage.id
     const abcClassification = data.currentImage.customerABCClassification
 
-    console.log(`🔄 Starting async processing for account ${accountId}...`)
+    console.log(`🔄 Async score processing started for account ${accountId}...`)
 
-    // Spawn background task
+    // Spawn background task — runs after the response has been sent
     setImmediate(async () => {
       try {
-        // Simulate processing delay
+        // Simulate a slow external operation (e.g. calling a scoring API)
         console.log(`⏳ Simulating 10-second processing delay...`)
         await new Promise(resolve => setTimeout(resolve, 10000))
 
         // Calculate score
         const calculatedScore = calculateScore(abcClassification)
-        console.log(`✅ Async calculated score: ${calculatedScore} (ABC: ${abcClassification})`)
+        console.log(`✅ Async score calculated: ${calculatedScore} (ABC: ${abcClassification})`)
 
-        // Fetch current account to get fresh ETag
-        console.log(`📡 Fetching current account data for ${accountId}...`)
-        const getResponse = await callCrmApi(`/sap/c4c/api/v1/account-service/accounts/${accountId}`)
-        const etag = getResponse.headers.get('ETag')
-        
-        if (!etag) {
-          throw new Error('No ETag received from CRM')
-        }
-
-        console.log(`✅ Received ETag: ${etag}`)
-
-        // Update account with calculated score
-        console.log(`📡 Updating account ${accountId} with score ${calculatedScore}...`)
-        await callCrmApi(
-          `/sap/c4c/api/v1/account-service/accounts/${accountId}`,
-          {
-            method: 'PATCH',
-            headers: {
-              'If-Match': etag,
-              'Content-Type': 'application/merge-patch+json'
-            },
-            body: JSON.stringify({
-              extensions: {
-                CustomScore: calculatedScore
-              }
-            })
-          }
-        )
-
-        console.log(`✅ Successfully updated account ${accountId} with CustomScore: ${calculatedScore}`)
-
-      } catch (error) {
-        console.error('❌ Async webhook processing failed:')
-        console.error(`   Account ID: ${accountId}`)
-        console.error(`   ABC Classification: ${abcClassification}`)
-        console.error(`   Error: ${error.message}`)
-      }
-    })
-
-  } catch (error) {
-    console.error('❌ Async webhook error:', error)
-    // Note: Response already sent, so we can't respond with error
-  }
-})
-
-/**
- * Create Focus Account Task webhook - creates approval tasks based on request status
- * Async: responds immediately, processes CRM API calls in background
- */
-app.post('/webhooks/create-focus-account-task', async (req, res) => {
-  try {
-    const validationError = validateWebhookPayload(req.body)
-    if (validationError) {
-      console.error(`❌ Validation failed: ${validationError.error}`)
-      return res.status(400).json({ error: validationError.error })
-    }
-
-    res.status(202).json({ accepted: true, message: 'Processing in background' })
-
-    const data = req.body.data || req.body
-    const currentImage = data.currentImage
-    const accountId = currentImage.id
-    const focusAccountRequestStatus = currentImage.extensions?.FocusAccountRequest || null
-
-    if (!focusAccountRequestStatus || !['10', '40'].includes(focusAccountRequestStatus)) {
-      console.log(`⚠️  FocusAccountRequest status is '${focusAccountRequestStatus}' — no action needed for account ${currentImage.displayId}`)
-      return
-    }
-
-    setImmediate(async () => {
-      try {
-        const statusLabel = focusAccountRequestStatus === '10' ? 'Awaiting Answer' : 'Request Manually'
-        console.log(`🔄 Focus Account Request status: ${statusLabel}. Processing for account ${currentImage.displayId}...`)
-
-        console.log(`📡 Fetching manager for owner ${currentImage.ownerId}...`)
-        const managerDisplayId = await getEmployeesManager(currentImage.ownerId)
-        if (!managerDisplayId) {
-          throw new Error(`No manager found for employee ${currentImage.ownerId}`)
-        }
-        console.log(`✅ Manager displayId: ${managerDisplayId}`)
-
-        console.log(`📡 Resolving manager employee ID...`)
-        const managerEmployeeId = await getEmployeeID(managerDisplayId)
-        if (!managerEmployeeId) {
-          throw new Error(`Could not resolve employee ID for displayId ${managerDisplayId}`)
-        }
-        console.log(`✅ Manager employee ID: ${managerEmployeeId}`)
-
-        // Status 10: task owner = account owner, organizer = manager
-        // Status 40: task owner = manager, organizer = account owner
-        const ownerId = focusAccountRequestStatus === '10' ? currentImage.ownerId : managerEmployeeId
-        const organizerId = focusAccountRequestStatus === '10' ? managerEmployeeId : currentImage.ownerId
-
-        console.log(`📡 Creating focus account task for account ${currentImage.displayId}...`)
-        const taskDisplayId = await createFocusAccountTask(accountId, ownerId, organizerId)
-        console.log(`✅ Task created successfully: ${taskDisplayId}`)
-
-      } catch (error) {
-        console.error('❌ Focus account request processing failed:')
-        console.error(`   Account: ${currentImage.displayId} (${accountId})`)
-        console.error(`   Status: ${focusAccountRequestStatus}`)
-        console.error(`   Error: ${error.message}`)
-      }
-    })
-
-  } catch (error) {
-    console.error('❌ Focus account request webhook error:', error)
-  }
-})
-
-/**
- * Update Account from Focus Task - updates focus account status when task is completed/canceled
- * Async: responds immediately, processes CRM API calls in background
- */
-app.post('/webhooks/update-account-from-focus-task', async (req, res) => {
-  try {
-    if (!req.body) {
-      return res.status(400).json({ error: 'Request body is empty' })
-    }
-
-    res.status(202).json({ accepted: true, message: 'Processing in background' })
-
-    const data = req.body.data || req.body
-    const currentImage = data.currentImage
-
-    if (!currentImage) {
-      console.log('⚠️  No currentImage in payload — skipping')
-      return
-    }
-
-    const taskStatus = currentImage.status
-    const accountId = currentImage.account?.id
-
-    if (!accountId) {
-      console.log('⚠️  No account ID in task payload — skipping')
-      return
-    }
-
-    let focusAccountStatus = null
-    if (taskStatus === 'COMPLETED') {
-      focusAccountStatus = '20' // Focused
-    } else if (taskStatus === 'CANCELED') {
-      focusAccountStatus = '30' // Not Focused
-    }
-
-    if (!focusAccountStatus) {
-      console.log(`⚠️  Task status '${taskStatus}' does not trigger an update — skipping`)
-      return
-    }
-
-    setImmediate(async () => {
-      try {
-        const statusLabel = focusAccountStatus === '20' ? 'Focused' : 'Not Focused'
-        console.log(`🔄 Task ${taskStatus} — setting account ${accountId} to ${statusLabel}...`)
-
+        // GET the account to obtain a fresh ETag for optimistic locking
         console.log(`📡 Fetching ETag for account ${accountId}...`)
         const getResponse = await callCrmApi(`/sap/c4c/api/v1/account-service/accounts/${accountId}`)
         const etag = getResponse.headers.get('ETag')
-        if (!etag) {
-          throw new Error('No ETag received from CRM')
-        }
+        if (!etag) throw new Error('No ETag received from CRM')
         console.log(`✅ Received ETag: ${etag}`)
 
-        console.log(`📡 Updating focus account status for ${accountId}...`)
+        // PATCH the account — If-Match ensures we don't overwrite a concurrent change
+        console.log(`📡 Writing CustomScore ${calculatedScore} to account ${accountId}...`)
         await callCrmApi(`/sap/c4c/api/v1/account-service/accounts/${accountId}`, {
           method: 'PATCH',
           headers: {
@@ -486,107 +288,100 @@ app.post('/webhooks/update-account-from-focus-task', async (req, res) => {
             'Content-Type': 'application/merge-patch+json'
           },
           body: JSON.stringify({
-            extensions: {
-              FocusAccountStatus: focusAccountStatus,
-              FocusAccountRequest: '50'
-            }
+            extensions: { CustomScore: calculatedScore }
           })
         })
 
-        console.log(`✅ Account ${accountId} updated: FocusAccountStatus=${focusAccountStatus}, FocusAccountRequest=50`)
+        console.log(`✅ Account ${accountId} updated with CustomScore: ${calculatedScore}`)
 
       } catch (error) {
-        console.error('❌ Update account from focus task failed:')
+        console.error('❌ Async score processing failed:')
         console.error(`   Account ID: ${accountId}`)
-        console.error(`   Task Status: ${taskStatus}`)
         console.error(`   Error: ${error.message}`)
       }
     })
 
   } catch (error) {
-    console.error('❌ Update account from focus task webhook error:', error)
+    console.error('❌ Async score webhook error:', error)
+    // Note: Response already sent, so we can't respond with error
   }
 })
 
 /**
- * Create New Contact from Guided Selling - creates a contact and sets it as primary on the opportunity
- * Async: responds immediately, processes CRM API calls in background
+ * ASYNC AUTOFLOW — Opportunity
+ *
+ * Triggered by an Asynchronous AutoFlow in SSC V2 on the Opportunity object.
+ * SSC V2 fires this after the save completes and does NOT wait for a response.
+ *
+ * Guard condition: only creates a task when priority *changes* TO Urgent (2).
+ * Comparing beforeImage vs currentImage prevents re-triggering on unrelated
+ * saves of an already-urgent opportunity.
+ *
+ * Creates a follow-up task linked directly to the opportunity (not the account),
+ * assigned to the opportunity owner, due in 3 days.
  */
-app.post('/webhooks/create-new-contact-guided-selling', async (req, res) => {
+app.post('/webhooks/create-urgent-opportunity-task', async (req, res) => {
   try {
-    if (!req.body) {
-      return res.status(400).json({ error: 'Request body is empty' })
+    // Validate payload
+    const validationError = validateWebhookPayload(req.body)
+    if (validationError) {
+      console.error(`❌ Validation failed: ${validationError.error}`)
+      return res.status(400).json({ error: validationError.error })
     }
 
+    // Respond immediately
     res.status(202).json({ accepted: true, message: 'Processing in background' })
 
+    // Support CloudEvents format (data wrapper) or direct format
     const data = req.body.data || req.body
     const currentImage = data.currentImage
+    const beforeImage = data.beforeImage || {}
 
-    if (!currentImage?.id) {
-      console.log('⚠️  No opportunity ID in payload — skipping')
+    // Guard: only act when priority just changed TO urgent
+    if (currentImage.priority !== PRIORITY_URGENT) {
+      console.log(`⚠️  Opportunity ${currentImage.displayId} — priority is not Urgent, skipping`)
+      return
+    }
+    if (beforeImage.priority === PRIORITY_URGENT) {
+      console.log(`⚠️  Opportunity ${currentImage.displayId} — priority was already Urgent, skipping`)
       return
     }
 
-    if (!currentImage.extensions?.newContact) {
-      console.log(`⚠️  No newContact flag set for opportunity ${currentImage.id} — skipping`)
-      return
-    }
-
+    // Spawn background task
     setImmediate(async () => {
       try {
-        const opportunityId = currentImage.id
-        console.log(`🔄 Creating new contact for opportunity ${opportunityId}...`)
+        console.log(`🔄 Opportunity ${currentImage.displayId} changed to Urgent — creating follow-up task...`)
 
-        // Create contact
-        console.log(`📡 Creating contact: ${currentImage.extensions.newContact_Firstname} ${currentImage.extensions.newContact_Lastname}...`)
-        const contactId = await createContact(
-          currentImage.extensions.newContact_Firstname,
-          currentImage.extensions.newContact_Lastname,
-          currentImage.extensions.newContact_EmailAddress,
-          currentImage.account?.id
+        const taskDisplayId = await createUrgentOpportunityTask(
+          currentImage.id,
+          currentImage.displayId,
+          currentImage.ownerId
         )
-        if (!contactId) {
-          throw new Error('Contact creation returned no ID')
-        }
-        console.log(`✅ Contact created: ${contactId}`)
 
-        // Add contact to opportunity
-        console.log(`📡 Adding contact to opportunity ${opportunityId}...`)
-        const contactOppId = await addContactToOpportunity(opportunityId, contactId)
-        if (!contactOppId) {
-          throw new Error('Adding contact to opportunity returned no ID')
-        }
-        console.log(`✅ Contact added to opportunity: ${contactOppId}`)
-
-        // Get opportunity ETag and set contact as primary
-        console.log(`📡 Fetching ETag for opportunity ${opportunityId}...`)
-        const getResponse = await callCrmApi(`/sap/c4c/api/v1/opportunity-service/opportunities/${opportunityId}`)
-        const etag = getResponse.headers.get('ETag')
-        if (!etag) {
-          throw new Error('No ETag received from CRM')
-        }
-        console.log(`✅ Received ETag: ${etag}`)
-
-        console.log(`📡 Setting contact as primary on opportunity ${opportunityId}...`)
-        await setContactAsPrimary(opportunityId, contactOppId, etag)
-        console.log(`✅ Contact ${contactId} set as primary on opportunity ${opportunityId}`)
+        console.log(`✅ Follow-up task created: ${taskDisplayId} for opportunity ${currentImage.displayId}`)
 
       } catch (error) {
-        console.error('❌ Create new contact guided selling failed:')
-        console.error(`   Opportunity: ${currentImage.id}`)
+        console.error('❌ Create urgent opportunity task failed:')
+        console.error(`   Opportunity: ${currentImage.displayId} (${currentImage.id})`)
         console.error(`   Error: ${error.message}`)
       }
     })
 
   } catch (error) {
-    console.error('❌ Create new contact guided selling webhook error:', error)
+    console.error('❌ Create urgent opportunity task webhook error:', error)
   }
 })
 
 /**
- * External alerts endpoint - returns alert signals for an account
- * SAP SSC V2 calls this endpoint to display external alerts in the UI
+ * SYNC UI EXTENSION — External Alerts (Account)
+ *
+ * This is NOT an AutoFlow — it is a UI Extension connection point.
+ * SSC V2 calls this endpoint on demand when rendering the Account page
+ * to display external alert signals in the UI (e.g. risk flags, compliance warnings).
+ *
+ * SSC V2 sends the account context; we respond synchronously with an alerts array.
+ * Replace the hardcoded alerts below with your real data source
+ * (e.g. a compliance system, fraud detection API, or a custom database table).
  */
 app.post('/webhooks/external-alerts', (req, res) => {
   try {
@@ -596,40 +391,72 @@ app.post('/webhooks/external-alerts', (req, res) => {
 
     console.log(`✅ External alerts requested for account ${displayId || accountId || 'unknown'}`)
 
-    const response = {
+    res.status(200).json({
       count: 2,
       alerts: [
         {
           signalType: 'extAlert',
           object: {
             objectType: 'ACCOUNT',
-            displayId: displayId || '',
-            objectId: accountId || ''
+            displayId: displayId || '1000016',
+            objectId: accountId || '01a15944-e5aa-7881-91a5-dc1bb733f69a'
           },
           groupText: 'High',
           icon: 'error_filled',
-          color: 'yellow',
-          message: 'Fraud'
+          color: 'red',
+          message: 'local energy network down'
         },
         {
           signalType: 'extAlert',
           object: {
             objectType: 'ACCOUNT',
-            displayId: displayId || '',
-            objectId: accountId || ''
+            displayId: displayId || '1000016',
+            objectId: accountId || '01a15944-e5aa-7881-91a5-dc1bb733f69a'
           },
           groupText: 'Medium',
           icon: 'error_filled',
-          color: 'red',
-          message: 'Photo not approved'
+          color: 'yellow',
+          message: 'never logged into self-service'
         }
       ]
-    }
-
-    res.status(200).json(response)
+    })
 
   } catch (error) {
     console.error('❌ External alerts error:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+/**
+ * SYNC UI EXTENSION — Account Insights Chart
+ *
+ * This is NOT an AutoFlow — it is a UI Extension connection point.
+ * SSC V2 calls this endpoint when rendering the custom chart widget
+ * in the Account Insights panel.
+ *
+ * SSC V2 sends the account context; we respond synchronously with chart data.
+ * Response shape: { total: <number>, data: [{ name, y }, ...] }
+ * Replace the hardcoded values below with your real data source.
+ */
+app.post('/webhooks/account-insights-chart', (req, res) => {
+  try {
+    const data = req.body.data || req.body
+    const accountId = data?.currentImage?.id || data?.objectId
+    const displayId = data?.currentImage?.displayId || data?.displayId
+
+    console.log(`✅ Account insights chart requested for account ${displayId || accountId || 'unknown'}`)
+
+    res.status(200).json({
+      total: 35.0,
+      data: [
+        { name: 'EcoSmart Products', y: 7 },
+        { name: 'CoolStart Products',   y: 18 },
+        { name: 'Standard Flow Products',  y: 10 }
+      ]
+    })
+
+  } catch (error) {
+    console.error('❌ Account insights chart error:', error)
     res.status(500).json({ error: 'Internal server error' })
   }
 })
@@ -639,12 +466,11 @@ app.post('/webhooks/external-alerts', (req, res) => {
 // ============================================================================
 
 app.listen(PORT, () => {
-  console.log(`\n🚀 CRM Webhook Service running on port ${PORT}`)
-  console.log(`📍 Health check: http://localhost:${PORT}/health`)
-  console.log(`📍 Sync webhook: http://localhost:${PORT}/webhooks/calculate-score-sync`)
-  console.log(`📍 Async webhook: http://localhost:${PORT}/webhooks/calculate-score-async`)
-  console.log(`📍 Focus account:  http://localhost:${PORT}/webhooks/create-focus-account-task`)
-  console.log(`📍 Update account: http://localhost:${PORT}/webhooks/update-account-from-focus-task`)
-  console.log(`📍 Guided selling: http://localhost:${PORT}/webhooks/create-new-contact-guided-selling`)
-  console.log(`📍 External alerts: http://localhost:${PORT}/webhooks/external-alerts\n`)
+  console.log(`\n🚀 CRM Extension Hub running on port ${PORT}`)
+  console.log(`📍 Health check:       http://localhost:${PORT}/health`)
+  console.log(`📍 Score (sync):       http://localhost:${PORT}/webhooks/calculate-score-sync`)
+  console.log(`📍 Score (async):      http://localhost:${PORT}/webhooks/calculate-score-async`)
+  console.log(`📍 Urgent opp task:    http://localhost:${PORT}/webhooks/create-urgent-opportunity-task`)
+  console.log(`📍 External alerts:    http://localhost:${PORT}/webhooks/external-alerts`)
+  console.log(`📍 Insights chart:     http://localhost:${PORT}/webhooks/account-insights-chart\n`)
 })
