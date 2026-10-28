@@ -24,6 +24,44 @@
   </header>
 
   <main class="wrap">
+    <!-- Introduction -->
+    <section class="panel" id="intro-panel">
+      <h2>👋 Introduction</h2>
+      <p class="intro">
+        Below you find five example endpoints. Each of them is a
+        &ldquo;cloud function&rdquo; of our microservice. Each of them will be
+        used to demonstrate how we can extend our SAP Sales and Service Cloud
+        with logic that is running side-by-side in another microservice.
+      </p>
+    </section>
+
+    <!-- One-time setup: communication system -->
+    <section class="panel" id="setup-panel">
+      <h2>⚙️ One-Time Setup: Communication System</h2>
+      <p class="muted">
+        Before you can connect <em>any</em> of the endpoints below, you need to
+        register this microservice once in SAP Sales and Service Cloud V2. All
+        later steps then simply reuse this communication system and only require
+        the endpoint's <code>path</code>.
+      </p>
+      <ol class="setup-steps">
+        <li>In SSC V2, navigate to <strong>Admin Settings → Communication Systems</strong>.</li>
+        <li>Create a <strong>new communication system</strong>.</li>
+        <li>Set the <strong>host</strong> to this service's host name (shown below).</li>
+        <li>Set the <strong>authorization</strong> to <code>None</code>.</li>
+        <li>Save and activate the communication system.</li>
+      </ol>
+      <p class="muted tiny">Use this host name as the communication system host:</p>
+      <div class="url-row">
+        <code id="setup-host">…</code>
+        <button class="copy-btn" id="setup-host-copy">Copy</button>
+      </div>
+      <p class="muted tiny">
+        For every endpoint below, you then only configure its
+        <code>path</code> and select the communication system you just created.
+      </p>
+    </section>
+
     <!-- Endpoint cards render here -->
     <section id="endpoints"></section>
 

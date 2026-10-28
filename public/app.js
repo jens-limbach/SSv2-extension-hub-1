@@ -40,6 +40,12 @@ async function copyText(text, btn) {
 
 document.getElementById('host-origin').textContent = origin
 
+// Populate the one-time setup section's host name + copy button
+const setupHost = document.getElementById('setup-host')
+if (setupHost) setupHost.textContent = origin
+const setupHostCopy = document.getElementById('setup-host-copy')
+if (setupHostCopy) setupHostCopy.addEventListener('click', () => copyText(origin, setupHostCopy))
+
 async function refreshHealth() {
   const node = document.getElementById('health')
   try {

@@ -27,6 +27,9 @@ body {
 
 .wrap { max-width: 960px; margin: 0 auto; padding: 0 20px; }
 
+/* Space between the header and the main content */
+main.wrap { padding-top: 28px; }
+
 /* Header */
 .site-header {
   background: linear-gradient(135deg, var(--brand), var(--brand-dark));
@@ -61,6 +64,18 @@ body {
 
 .muted { color: var(--muted); }
 .tiny { font-size: 0.8rem; }
+
+/* Introduction paragraph */
+#intro-panel .intro {
+  color: var(--muted);
+  margin: 0;
+  line-height: 1.55;
+}
+
+/* One-time setup panel */
+.setup-steps { margin: 12px 0 16px; padding-left: 22px; }
+.setup-steps li { margin-bottom: 6px; }
+#setup-panel .url-row { margin-top: 6px; }
 
 /* Inline delay control (lives inside the async score card) */
 .delay-control {
