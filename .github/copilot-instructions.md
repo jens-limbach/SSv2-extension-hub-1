@@ -121,7 +121,7 @@ New endpoints are added directly to `server.js` under the `// ENDPOINTS` section
 ### Educational Dashboard (`public/`)
 - A lean, zero-build dashboard is served at the root URL via `express.static('public')`.
 - It is plain static HTML/CSS/vanilla JS — **do not** introduce a framework, bundler, or build step.
-- Endpoint cards are generated from the `ENDPOINTS` metadata array in `server.js` (exposed via `GET /api/endpoints`), so keep that array as the single source of truth when adding endpoints.
+- Endpoint cards are generated from the static `public/endpoints.json` catalogue (served at `/endpoints.json`), so keep that file as the single source of truth for dashboard metadata when adding endpoints. The webhook handlers themselves live in `server.js`.
 - The async delay toggle uses in-memory state (`asyncScoreDelayMs`) via `GET`/`POST /api/config` — demo-only, resets on restart.
 
 ---

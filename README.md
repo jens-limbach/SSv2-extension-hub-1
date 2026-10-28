@@ -52,7 +52,7 @@ The service serves a lean, zero-build educational dashboard at its **root URL** 
 - **"Try it"** buttons that POST a realistic sample payload so you can see sync (`200`) vs. async (`202`) behaviour without a live tenant
 - A **delay toggle** for the async score webhook (10s slow ⟷ 0s instant)
 
-The delay toggle is **in-memory and demo-only**: it resets on restart and affects a single instance. It is driven by `GET`/`POST /api/config`; the endpoint catalogue comes from `GET /api/endpoints`.
+The delay toggle is **in-memory and demo-only**: it resets on restart and affects a single instance. It is driven by `GET`/`POST /api/config`; the endpoint catalogue is a static file served at `/endpoints.json` (source: `public/endpoints.json`).
 
 ### Viewing logs
 

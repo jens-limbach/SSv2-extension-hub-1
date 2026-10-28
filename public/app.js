@@ -5,9 +5,9 @@
 
 const origin = window.location.origin
 const PATTERN_LABEL = {
-  'sync-autoflow': 'Sync AutoFlow',
+  'sync-external-hook': 'Sync External Hook',
   'async-autoflow': 'Async AutoFlow',
-  'sync-ui-extension': 'Sync UI Extension'
+  'sync-ui-extension': 'UI Extension'
 }
 
 // --- helpers ---------------------------------------------------------------
@@ -199,7 +199,7 @@ async function sendSample(ep, fullUrl, btn, result) {
 async function loadEndpoints() {
   const container = document.getElementById('endpoints')
   try {
-    const res = await fetch('/api/endpoints')
+    const res = await fetch('endpoints.json')
     const { endpoints } = await res.json()
     container.appendChild(el('h2', { text: `🔗 Endpoints (${endpoints.length})` }))
     endpoints.forEach(ep => container.appendChild(buildCard(ep)))

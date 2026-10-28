@@ -103,7 +103,7 @@ main.wrap { padding-top: 28px; }
   font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.4px; padding: 3px 9px; border-radius: 20px; color: #fff;
 }
-.badge.sync-autoflow { background: var(--sync); }
+.badge.sync-external-hook { background: var(--sync); }
 .badge.async-autoflow { background: var(--async); }
 .badge.sync-ui-extension { background: var(--ui); }
 .method {
