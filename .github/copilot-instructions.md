@@ -109,6 +109,7 @@ Always validate that `CRM_BASE_URL`, `CRM_USERNAME`, and `CRM_PASSWORD` are pres
 
 ```
 server.js          ← All endpoints and helpers live here
+public/            ← Static educational dashboard (plain HTML/CSS/JS, no build step)
 package.json       ← Minimal dependencies only
 manifest.yml       ← Cloud Foundry deployment (adjust app name when needed)
 env-template.txt   ← Template; never commit actual .env
@@ -116,6 +117,12 @@ env-template.txt   ← Template; never commit actual .env
 ```
 
 New endpoints are added directly to `server.js` under the `// ENDPOINTS` section. New helpers go under `// HELPER FUNCTIONS`.
+
+### Educational Dashboard (`public/`)
+- A lean, zero-build dashboard is served at the root URL via `express.static('public')`.
+- It is plain static HTML/CSS/vanilla JS — **do not** introduce a framework, bundler, or build step.
+- Endpoint cards are generated from the `ENDPOINTS` metadata array in `server.js` (exposed via `GET /api/endpoints`), so keep that array as the single source of truth when adding endpoints.
+- The async delay toggle uses in-memory state (`asyncScoreDelayMs`) via `GET`/`POST /api/config` — demo-only, resets on restart.
 
 ---
 

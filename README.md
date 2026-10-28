@@ -1,12 +1,70 @@
 # CRM Extension Hub
 
-A minimal Express-based webhook microservice for SAP Sales and Service Cloud V2 (SSC V2). Demonstrates the key extension patterns available in SSC V2: synchronous and asynchronous AutoFlows, and UI Extension data providers. Designed as a single-file central hub — add all your custom endpoints here.
+A minimal Express-based webhook microservice for SAP Sales and Service Cloud V2 (SSC V2). Demonstrates the key extension patterns available in SSC V2: synchronous and asynchronous AutoFlows and UI Extension data providers. Designed as a single-file central extension hub.
 
 ## 🚀 Quick Start
 
-1. **Install dependencies:** `npm install`
-2. **Configure environment:** `copy env-template.txt .env` and fill in your CRM credentials
-3. **Start locally:** `npm run dev` — service runs on `http://localhost:3000`
+Get from zero to a running microservice in five steps with a simple web interface that leads you step by step through the configuration.
+
+1. **Prerequisites** — A Cloud Foundry account with a target space, and the `cf` CLI installed and logged in (`cf login`). A local Node.js install is *optional* — it is not required to deploy.
+
+2. **Clone the repository** — In a terminal:
+   ```bash
+   git clone <repository-url>
+   ```
+   Then open the folder in VS Code (`code .`, or **File → Open Folder**).
+
+3. **Make the app name unique** *(only on a BTP trial or a shared BTP account)* — App names and routes must be unique per landscape. In `manifest.yml`, append your initials or another suffix to `name` (e.g. `crm-extension-hub-abc`), and use that same name in the commands below.
+
+4. **Deploy to Cloud Foundry** — From the project folder, push the app and set your CRM credentials:
+   ```bash
+   cf push
+   cf set-env crm-extension-hub CRM_BASE_URL "myxxxxxxx.de1.demo.crm.cloud.sap"
+   cf set-env crm-extension-hub CRM_USERNAME "your-username"
+   cf set-env crm-extension-hub CRM_PASSWORD "your-password"
+   cf restage crm-extension-hub
+   ```
+   Replace the app name (`crm-extension-hub`, defined in `manifest.yml`) and the values with your own.
+
+5. **Open the dashboard** — Find your app's URL (the `routes` line in `cf app crm-extension-hub`, or the output of `cf push`) and open `https://<your-route>/` in a browser.
+
+6. **Follow the on-page instructions** — The dashboard lists every endpoint with its live URL and copy buttons, lets you send sample payloads with the **Try it** buttons, and gives step-by-step **"How to set this up in SAP Sales and Service Cloud V2"** instructions for each use case. Configure everything from there.
+
+### Run locally (optional)
+
+Local running is only useful for reading and inspecting the code — the webhook use cases need a reachable SSC V2 tenant, so **live CRM calls will not work locally**.
+
+```bash
+npm install                      # install dependencies
+copy env-template.txt .env       # then fill in your CRM credentials
+npm run dev                      # runs on http://localhost:3000
+```
+
+Open `http://localhost:3000/` to view the dashboard locally.
+
+## 🖥️ Live Dashboard
+
+The service serves a lean, zero-build educational dashboard at its **root URL** (`/`). It is plain static HTML/CSS/JS in `public/`, served by the same Express app — no framework, no bundler. It gives you:
+
+- The **live hostname** and copy-paste-ready full URL for every webhook
+- A **health indicator** (pings `/health`)
+- Per-endpoint **"How to set this up in SAP Sales and Service Cloud V2"** step-by-step instructions
+- **"Try it"** buttons that POST a realistic sample payload so you can see sync (`200`) vs. async (`202`) behaviour without a live tenant
+- A **delay toggle** for the async score webhook (10s slow ⟷ 0s instant)
+
+The delay toggle is **in-memory and demo-only**: it resets on restart and affects a single instance. It is driven by `GET`/`POST /api/config`; the endpoint catalogue comes from `GET /api/endpoints`.
+
+### Viewing logs
+
+Since you most likely deployed with the Cloud Foundry CLI, watching the service is one more command:
+
+```bash
+cf logs crm-extension-hub            # live tail
+cf logs crm-extension-hub --recent   # dump recent logs
+```
+
+Log lines use emoji prefixes: ✅ info · 🔄 async started · ⏳ waiting · 📡 outbound call · ⚠️ warning · ❌ error.
+
 
 ## ⚙️ Environment Variables
 
@@ -109,20 +167,11 @@ Both the wrapped (`body.data`) and unwrapped (`body`) formats are supported. The
 
 `beforeImage` contains the state **before** the save. Use it (as in the urgent opportunity task endpoint) to check what actually changed.
 
-## ☁️ Cloud Foundry Deployment
-
-```bash
-cf push
-cf set-env crm-extension-hub2 CRM_BASE_URL "https://your-tenant.crm.cloud.sap"
-cf set-env crm-extension-hub2 CRM_USERNAME "your-username"
-cf set-env crm-extension-hub2 CRM_PASSWORD "your-password"
-cf restage crm-extension-hub2
-```
-
 ## 📁 Project Structure
 
 ```
 server.js          ← All endpoints and helpers (single file)
+public/            ← Static educational dashboard (index.html, styles.css, app.js)
 package.json       ← Minimal dependencies (express, dotenv)
 manifest.yml       ← Cloud Foundry deployment config
 env-template.txt   ← Template for .env (never commit .env)

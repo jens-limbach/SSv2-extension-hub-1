@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CRM Extension Hub — Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <h1>🔌 CRM Extension Hub</h1>
+      <p class="tagline">
+        A lean webhook microservice for SAP Sales and Service Cloud V2.
+        Every endpoint below is live on this host — copy a URL, read the
+        setup steps, or hit <em>Try it</em> to see the behaviour.
+      </p>
+      <div class="hostbar">
+        <span class="label">This host:</span>
+        <code id="host-origin">…</code>
+        <span id="health" class="health" title="Health status">⚪ checking…</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- Endpoint cards render here -->
+    <section id="endpoints"></section>
+
+    <!-- Viewing logs -->
+    <section class="panel" id="logs-panel">
+      <h2>📜 Viewing Logs</h2>
+      <p class="muted">
+        You most likely deployed this app with the Cloud Foundry CLI
+        (<code>cf push</code>). To watch what the microservice is doing —
+        including the emoji-prefixed operational output — you only need one
+        more command:
+      </p>
+      <pre class="cmd"><code># Live tail of the logs
+cf logs crm-extension-hub
+
+# Dump the most recent logs and exit
+cf logs crm-extension-hub --recent</code></pre>
+      <p class="muted tiny">
+        Replace <code>crm-extension-hub</code> with your app name from
+        <code>manifest.yml</code> if you changed it. Log lines use
+        ✅ info · 🔄 async started · ⏳ waiting · 📡 outbound call · ⚠️ warning · ❌ error.
+      </p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>
+        One file does it all — see <code>server.js</code>. This dashboard is
+        plain static HTML/CSS/JS served by the same Express app. No build step,
+        no framework.
+      </p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
