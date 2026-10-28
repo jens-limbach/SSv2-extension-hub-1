@@ -8,14 +8,16 @@
       "summary": "Reads the account ABC classification and returns a CustomScore (A=90, B=70, C=50). SSC V2 waits for the response and persists the field automatically — no write-back call needed.",
       "responseNote": "200 OK with { data: { ...currentImage, extensions: { CustomScore } } }",
       "setupSteps": [
-        "In SSC V2, open Settings → Extensibility → AutoFlows.",
-        "Create a new AutoFlow on the Account business object.",
-        "Set the trigger to \"On Save\" and the type to Synchronous.",
+        "In SSC V2, open System Settings → Extensibility Administration → Account Service.",
+        "Open the External Hooks Tab on the right side and create a new External Hooks",
+        "Provide a name like 'AccountAfterSave'",
+        "Set the event to \"Post-Hook\" and the type to Synchronous.",
         "Add an action of type \"Call External Service / Webhook\".",
-        "Paste this endpoint's full URL (shown above) as the target.",
-        "Map the account record as the request body (currentImage).",
+        "Paste this endpoint's path (without the hostname) into API Path.",
+        "Select your previously created Communication System",
         "Ensure a custom field \"CustomScore\" exists on the Account (Extensibility → Custom Fields).",
-        "Activate the AutoFlow, then save an account to see the score appear instantly."
+        "Save and activate the external hook.",
+        "Go to any account, change the ABC classification and see how your CustomScore field gets updated."
       ],
       "sample": {
         "data": {
