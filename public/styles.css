@@ -37,7 +37,7 @@ main.wrap { padding-top: 28px; }
   padding: 32px 0 28px;
 }
 .site-header h1 { margin: 0 0 6px; font-size: 1.9rem; }
-.tagline { margin: 0 0 18px; max-width: 640px; opacity: 0.95; }
+.tagline { margin: 0 0 18px; opacity: 0.95; }
 .tagline em { font-style: normal; background: rgba(255,255,255,0.2); padding: 0 4px; border-radius: 3px; }
 
 .hostbar {
