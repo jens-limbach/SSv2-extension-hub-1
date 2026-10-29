@@ -1,6 +1,6 @@
 # CRM Extension Hub
 
-A minimal Express-based webhook microservice for SAP Sales and Service Cloud V2 (SSC V2). Demonstrates the key extension patterns available in SSC V2: synchronous and asynchronous AutoFlows and UI Extension data providers. Designed as a single-file central extension hub.
+A minimal Express-based webhook microservice for SAP Sales and Service Cloud V2 (SSC V2). Demonstrates the key extension patterns available in SSC V2: synchronous external hooks, asynchronous autoflows, custom key metrics and business alerts.
 
 ## 🚀 Quick Start
 
@@ -10,9 +10,9 @@ Get from zero to a running microservice in five steps with a simple web interfac
 
 2. **Clone the repository** — In a terminal:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/jens-limbach/SSv2-extension-hub-1.git
    ```
-   Then open the folder in VS Code (`code .`, or **File → Open Folder**).
+   Then open the folder in VS Code (**File → Open Folder**).
 
 3. **Make the app name unique** *(only on a BTP trial or a shared BTP account)* — App names and routes must be unique per landscape. In `manifest.yml`, append your initials or another suffix to `name` (e.g. `crm-extension-hub-abc`), and use that same name in the commands below.
 
@@ -26,25 +26,13 @@ Get from zero to a running microservice in five steps with a simple web interfac
    ```
    Replace the app name (`crm-extension-hub`, defined in `manifest.yml`) and the values with your own.
 
-5. **Open the dashboard** — Find your app's URL (the `routes` line in `cf app crm-extension-hub`, or the output of `cf push`) and open `https://<your-route>/` in a browser.
+5. **Open the dashboard** — Find your app's URL (you find it in the console output of `cf push`) and open `https://<your-route-url>/` in a browser.
 
-6. **Follow the on-page instructions** — The dashboard lists every endpoint with its live URL and copy buttons, lets you send sample payloads with the **Try it** buttons, and gives step-by-step **"How to set this up in SAP Sales and Service Cloud V2"** instructions for each use case. Configure everything from there.
-
-### Run locally (optional)
-
-Local running is only useful for reading and inspecting the code — the webhook use cases need a reachable SSC V2 tenant, so **live CRM calls will not work locally**.
-
-```bash
-npm install                      # install dependencies
-copy env-template.txt .env       # then fill in your CRM credentials
-npm run dev                      # runs on http://localhost:3000
-```
-
-Open `http://localhost:3000/` to view the dashboard locally.
+6. **Follow the on-page instructions** — The dashboard lists every use case with its live URL and copy buttons, lets you send sample payloads with the **Try it** buttons, and gives step-by-step **"How to set this up in SAP Sales and Service Cloud V2"** instructions for each use case. Configure everything from there.
 
 ## 🖥️ Live Dashboard
 
-The service serves a lean, zero-build educational dashboard at its **root URL** (`/`). It is plain static HTML/CSS/JS in `public/`, served by the same Express app — no framework, no bundler. It gives you:
+The service serves an educational dashboard at its **root URL** (`/`). It is plain static HTML/CSS/JS in `public/`, served by the same Express app — no framework, no bundler. It gives you:
 
 - The **live hostname** and copy-paste-ready full URL for every webhook
 - A **health indicator** (pings `/health`)
