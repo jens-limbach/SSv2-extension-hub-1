@@ -117,11 +117,22 @@ function buildCard(ep) {
 
   card.appendChild(el('p', { class: 'summary muted', text: ep.summary }))
 
+  // Full endpoint (hostname + path) — use this for testing
+  card.appendChild(el('p', { class: 'field-label', text: 'Endpoint:' }))
   const copyBtn = el('button', { class: 'copy-btn', text: 'Copy' })
   copyBtn.addEventListener('click', () => copyText(fullUrl, copyBtn))
   card.appendChild(el('div', { class: 'url-row' }, [
     el('code', { text: fullUrl }),
     copyBtn
+  ]))
+
+  // Path only — this is what you paste into SSC V2 step-by-step configuration
+  card.appendChild(el('p', { class: 'field-label', text: 'Path:' }))
+  const copyPathBtn = el('button', { class: 'copy-btn', text: 'Copy' })
+  copyPathBtn.addEventListener('click', () => copyText(ep.path, copyPathBtn))
+  card.appendChild(el('div', { class: 'url-row' }, [
+    el('code', { text: ep.path }),
+    copyPathBtn
   ]))
 
   const note = el('p', { class: 'response-note' })
@@ -201,7 +212,7 @@ async function loadEndpoints() {
   try {
     const res = await fetch('endpoints.json')
     const { endpoints } = await res.json()
-    container.appendChild(el('h2', { text: `🔗 Endpoints (${endpoints.length})` }))
+    container.appendChild(el('h2', { text: `🔗 Use Cases (endpoints) (${endpoints.length})` }))
     endpoints.forEach(ep => container.appendChild(buildCard(ep)))
     // Mark the active delay toggle now that the control has been rendered
     await loadConfig()

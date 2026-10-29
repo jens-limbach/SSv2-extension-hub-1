@@ -490,9 +490,9 @@ app.post('/webhooks/account-insights-chart', (req, res) => {
     res.status(200).json({
       total: 35.0,
       data: [
-        { name: 'EcoSmart Products', y: 7 },
-        { name: 'CoolStart Products',   y: 18 },
-        { name: 'Standard Flow Products',  y: 10 }
+        { name: 'Open Deliveries', y: 7 },
+        { name: 'Completed Deliveries',   y: 18 },
+        { name: 'Delayed Deliveries',  y: 10 }
       ]
     })
 

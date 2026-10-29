@@ -92,7 +92,7 @@
       "path": "/webhooks/external-alerts",
       "pattern": "sync-ui-extension",
       "title": "External Alerts",
-      "summary": "Not an AutoFlow — a UI Extension data provider. SSC V2 calls this on demand while rendering the Account page to display external alert signals (risk flags, compliance warnings). Replace the sample alerts with a real data source.",
+      "summary": "A UI Extension data provider. SSC V2 calls this on demand while rendering the Agent Desktop to display external alert signals (risk flags, compliance warnings) relevant for the currently calling customer.",
       "responseNote": "200 OK with { count, alerts: [{ signalType, icon, color, groupText, message }] }",
       "setupSteps": [
         "In SSC V2, open Settings → Extensibility → UI Extensions (or External Alerts configuration).",
@@ -115,7 +115,7 @@
       "path": "/webhooks/account-insights-chart",
       "pattern": "sync-ui-extension",
       "title": "Account Insights Chart",
-      "summary": "Not an AutoFlow — a UI Extension data provider. SSC V2 calls this when rendering a custom chart widget in the Account Insights panel. Returns chart data; replace the hardcoded values with a real data source.",
+      "summary": "UI Extension data provider. SSC V2 calls this when rendering a custom chart widget in the Account Insights panel. Returns chart data.",
       "responseNote": "200 OK with { total, data: [{ name, y }] }",
       "setupSteps": [
         "In SSC V2, open Settings → Extensibility → UI Extensions.",
