@@ -15,8 +15,8 @@
         "Add an action of type \"Call External Service / Webhook\".",
         "Paste this endpoint's path (without the hostname) into API Path.",
         "Select your previously created Communication System",
-        "Ensure a custom field \"CustomScore\" exists on the Account (Extensibility → Custom Fields).",
         "Save and activate the external hook.",
+        "Ensure a custom field \"CustomScore\" exists on the Account (Extensibility → Account Service → Custom Fields).",
         "Go to any account, change the ABC classification and see how your CustomScore field gets updated."
       ],
       "sample": {
@@ -38,14 +38,17 @@
       "summary": "Responds 202 immediately so the user's save completes instantly, then calculates the score in the background and writes it back to the CRM via GET (ETag) + PATCH (If-Match). Includes a switchable processing delay to illustrate slow operations.",
       "responseNote": "202 Accepted with { accepted: true, message: \"Processing in background\" }",
       "setupSteps": [
-        "In SSC V2, open Settings → Extensibility → AutoFlows.",
-        "Create a new AutoFlow on the Account business object.",
-        "Set the trigger to \"On Save\" and the type to Asynchronous.",
-        "Add an action of type \"Call External Service / Webhook\".",
-        "Paste this endpoint's full URL (shown above) as the target.",
-        "Map the account record as the request body (currentImage).",
-        "Make sure the API user (CRM_USERNAME) has write access so the background PATCH succeeds.",
-        "Activate the AutoFlow. Use the delay toggle above to compare instant vs. 10-second processing."
+        "In SSC V2, open System Settings → Autoflow.",
+        "Create a new AutoFlow for the Account entity.",
+        "Set the event type to \"Update Account\"",
+        "Configure the condition to check if the current ABC Classification is not equal the previous ABC classification.",
+        "Add an Event Notification",
+        "Enter any event name, select your communication system, and copy only the path from above.",
+        "Save and activate the autoflow",
+        "Optional: If you connected the external hook above, deactivate it before you test.",
+        "Ensure a custom field \"CustomScore\" exists on the Account (Extensibility → Account Service → Custom Fields).",
+        "Open any account that has already an ABC classification and change it to a different value.",
+        "Switch via the website here betweeen the 10 and 0 seconds delay to demonstrate the asynchronosity"
       ],
       "sample": {
         "data": {
@@ -66,14 +69,15 @@
       "summary": "When an opportunity's priority changes to Urgent, creates a follow-up task linked to the opportunity, assigned to its owner and due in 3 days. Uses beforeImage vs currentImage so it only fires on an actual change.",
       "responseNote": "202 Accepted with { accepted: true, message: \"Processing in background\" }",
       "setupSteps": [
-        "In SSC V2, open Settings → Extensibility → AutoFlows.",
-        "Create a new AutoFlow on the Opportunity business object.",
-        "Set the trigger to \"On Save\" and the type to Asynchronous.",
-        "Add an action of type \"Call External Service / Webhook\".",
-        "Paste this endpoint's full URL (shown above) as the target.",
-        "Map both beforeImage and currentImage into the request body so the change guard works.",
-        "Confirm the priority code for \"Urgent\" matches PRIORITY_URGENT (\"2\") in server.js.",
-        "Activate the AutoFlow, then change an opportunity's priority to Urgent and save."
+        "In SSC V2, open System Settings → Autoflow.",
+        "Create a new AutoFlow for the Opportunity entity.",
+        "Set the event type to \"Update Opportunity\"",
+        "Configure the condition to check if the current Priority is not equal the previous Priority.",
+        "Add an Event Notification",
+        "Enter any event name, select your communication system, and copy only the path from above.",
+        "Save and activate the autoflow",
+        "Open any opportunity, change its priority to urgent and refresh it.",
+        "You should see a new related task after a few milliseconds."
       ],
       "sample": {
         "data": {
@@ -92,14 +96,14 @@
       "path": "/webhooks/external-alerts",
       "pattern": "sync-ui-extension",
       "title": "External Alerts",
-      "summary": "A UI Extension data provider. SSC V2 calls this on demand while rendering the Agent Desktop to display external alert signals (risk flags, compliance warnings) relevant for the currently calling customer.",
+      "summary": "SSC V2 calls this endpoint on demand while rendering the Agent Desktop to display external alert signals (risk flags, compliance warnings) relevant for the currently calling customer.",
       "responseNote": "200 OK with { count, alerts: [{ signalType, icon, color, groupText, message }] }",
       "setupSteps": [
-        "In SSC V2, open Settings → Extensibility → UI Extensions (or External Alerts configuration).",
-        "Create a new External Alerts / signal provider for the Account object.",
-        "Register this endpoint's full URL (shown above) as the data provider.",
-        "Open any account page — the alerts returned here render in the alerts area.",
-        "Edit the alerts array in server.js to connect your real alert source."
+        "In SSC V2, open System Settings → Communication Configuration.",
+        "Add a new communication configuration, select your communication system, give it a name, scroll down to HTTP Data and search for 'GET Alert Messages'",
+        "Enter the above path in the newly added HTTP data entry",
+        "Save and activate.",
+        "Open the Agent Desktop feature, search for any contact, accept it and see the newly displayed alerts in the left side."
       ],
       "sample": {
         "data": {
@@ -118,11 +122,11 @@
       "summary": "UI Extension data provider. SSC V2 calls this when rendering a custom chart widget in the Account Insights panel. Returns chart data.",
       "responseNote": "200 OK with { total, data: [{ name, y }] }",
       "setupSteps": [
-        "In SSC V2, open Settings → Extensibility → UI Extensions.",
-        "Add a custom chart widget to the Account Insights panel.",
-        "Register this endpoint's full URL (shown above) as the chart data provider.",
-        "Open any account page to see the chart render with the data below.",
-        "Edit the data array in server.js to feed the chart from your real source."
+        "In SSC V2, open System Settings → Custom key metrics",
+        "Add a new custom key metric",
+        "Fill in the names, select pie chart, copy the path and select your communication system.",
+        "Save.",
+        "Open any account and check the Account Insights section with your new chart (maybe you need to go to the next 'page'.)"
       ],
       "sample": {
         "data": {
