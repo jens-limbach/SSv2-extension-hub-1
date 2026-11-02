@@ -161,8 +161,9 @@
         "Remove the constants for the parameters.",
         "Maintain the first parameter as a System Parameter and link it to any available parameter.",
         "Maintain the second parameter as a Field Binding.",
-        "Open any account record, change to Adaptation Mode, add a new tab, add a mashup to the tab, select your mashup and configure the field binding.",
-        "Test the new mashup."
+        "Open any account, case or opporunity record, change to Adaptation Mode, add a new tab, add a mashup to the tab, select your mashup and configure the field binding to the technical ID.",
+        "Test the new mashup and the buttons below.",
+        "Note: For testing the 'Refresh Rase' you need to do inside the case."
       ]
     }
   ]

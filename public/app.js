@@ -198,48 +198,47 @@ function sendPostMessage(payload, statusNode) {
 }
 
 // Builds one row of navigation buttons for a given entity (Case / Opportunity).
-// routingKey: 'case' or 'guidedselling'. getDisplayId returns the user-entered id.
-function buildPostMessageRow(label, routingKey, getDisplayId, statusNode) {
+// routingKey: 'case' or 'guidedselling'. getObjectKey returns the user-entered id.
+function buildPostMessageRow(label, routingKey, getObjectKey, statusNode) {
   const row = el('div', { class: 'pm-row' })
-  row.appendChild(el('span', { class: 'pm-row-label', text: label }))
 
-  // Create — quick create view (no displayId needed)
+  // Create — quick create view (no objectKey needed)
   const createBtn = el('button', { class: 'pm-btn', text: `Create ${label}` })
   createBtn.addEventListener('click', () => sendPostMessage(
     { operation: 'navigation', params: { routingKey, viewType: 'quickcreate' } }, statusNode
   ))
 
-  // List — list view (no displayId needed)
+  // List — list view (no objectKey needed)
   const listBtn = el('button', { class: 'pm-btn', text: `List ${label}s` })
   listBtn.addEventListener('click', () => sendPostMessage(
     { operation: 'navigation', params: { routingKey, viewType: 'list' } }, statusNode
   ))
 
-  // View — side-panel quick view (needs displayId)
+  // View — side-panel quick view (needs objectKey)
   const viewBtn = el('button', { class: 'pm-btn', text: `View ${label}` })
   viewBtn.addEventListener('click', () => {
-    const displayId = getDisplayId()
-    if (!displayId) {
-      statusNode.textContent = `Enter a ${label} displayId first to use "View ${label}".`
+    const objectKey = getObjectKey()
+    if (!objectKey) {
+      statusNode.textContent = `Enter a ${label} objectKey first to use "View ${label}".`
       statusNode.classList.add('pm-status-warn')
       return
     }
     sendPostMessage(
-      { operation: 'navigation', params: { displayId, routingKey, viewType: 'quickview' } }, statusNode
+      { operation: 'navigation', params: { objectKey, routingKey, viewType: 'quickview' } }, statusNode
     )
   })
 
-  // Open — full details page (needs displayId)
+  // Open — full details page (needs objectKey)
   const openBtn = el('button', { class: 'pm-btn', text: `Open ${label}` })
   openBtn.addEventListener('click', () => {
-    const displayId = getDisplayId()
-    if (!displayId) {
-      statusNode.textContent = `Enter a ${label} displayId first to use "Open ${label}".`
+    const objectKey = getObjectKey()
+    if (!objectKey) {
+      statusNode.textContent = `Enter a ${label} objectKey first to use "Open ${label}".`
       statusNode.classList.add('pm-status-warn')
       return
     }
     sendPostMessage(
-      { operation: 'navigation', params: { displayId, routingKey, viewType: 'details' } }, statusNode
+      { operation: 'navigation', params: { objectKey, routingKey, viewType: 'details' } }, statusNode
     )
   })
 
@@ -330,33 +329,49 @@ function buildLiveParams(exampleParams) {
   return wrap
 }
 
+// Builds a self-contained group: one objectKey input row followed directly by
+// its Create / List / View / Open button row, wrapped in a .pm-group box.
+// Reuses buildPostMessageRow so the button behaviour stays identical.
+function buildPostMessageGroup(label, routingKey, placeholder, statusNode) {
+  const group = el('div', { class: 'pm-group' })
+
+  const input = el('input', { class: 'pm-input', type: 'text', placeholder })
+  group.appendChild(el('div', { class: 'pm-input-row' }, [
+    el('label', { class: 'pm-input-label', text: `${label} objectKey:` }),
+    input
+  ]))
+
+  group.appendChild(buildPostMessageRow(label, routingKey, () => input.value.trim(), statusNode))
+  return group
+}
+
 function buildPostMessageDemo() {
   const wrap = el('div', { class: 'pm-demo' })
   wrap.appendChild(el('strong', { text: 'Interact with the CRM shell (window.postMessage)' }))
   wrap.appendChild(el('p', { class: 'muted tiny', text:
-    'These buttons send a navigation message to the overlaying SSC V2 application via window.parent.postMessage. "View" opens the record in a side panel (quickview); "Open" navigates to the full details page. Both need a displayId from one of your own records.'
+    'These buttons send a navigation message to the overlaying SSC V2 application via window.parent.postMessage. "View" opens the record in a side panel (quickview); "Open" navigates to the full details page. Both need a objectKey from one of your own records.'
   }))
-
-  // Case displayId input
-  const caseInput = el('input', { class: 'pm-input', type: 'text', placeholder: 'Case displayId (e.g. 45)' })
-  wrap.appendChild(el('div', { class: 'pm-input-row' }, [
-    el('label', { class: 'pm-input-label', text: 'Case displayId:' }),
-    caseInput
-  ]))
-
-  // Opportunity displayId input
-  const oppInput = el('input', { class: 'pm-input', type: 'text', placeholder: 'Opportunity displayId (e.g. 2000042)' })
-  wrap.appendChild(el('div', { class: 'pm-input-row' }, [
-    el('label', { class: 'pm-input-label', text: 'Opportunity displayId:' }),
-    oppInput
-  ]))
 
   const status = el('p', { class: 'pm-status muted tiny', text: 'No message sent yet.' })
 
-  // Row 1 — Case (routingKey: case)
-  wrap.appendChild(buildPostMessageRow('Case', 'case', () => caseInput.value.trim(), status))
-  // Row 2 — Opportunity (routingKey: guidedselling)
-  wrap.appendChild(buildPostMessageRow('Opportunity', 'guidedselling', () => oppInput.value.trim(), status))
+  // One group per entity — the button row sits directly under its input.
+  wrap.appendChild(buildPostMessageGroup('Account', 'mdaccount', 'Account UUID (e.g. 0197a1ea-08ef-7ddd-a4c2-b7df1fc1c5b9)', status))
+  wrap.appendChild(buildPostMessageGroup('Case', 'case', 'Case UUID (e.g. 0197a1ea-08ef-7ddd-a4c2-b7df1fc1c5b9)', status))
+  wrap.appendChild(buildPostMessageGroup('Opportunity', 'guidedselling', 'Opportunity UUID (e.g. 0197a1ea-08ef-7ddd-a4c2-b7df1fc1c5b9)', status))
+
+  // Other — standalone actions that aren't tied to an entity/objectKey.
+  const otherGroup = el('div', { class: 'pm-group' })
+  otherGroup.appendChild(el('div', { class: 'pm-input-row' }, [
+    el('label', { class: 'pm-input-label', text: 'Other:' })
+  ]))
+  const refreshRow = el('div', { class: 'pm-row' })
+  const refreshBtn = el('button', { class: 'pm-btn', text: 'Refresh Case' })
+  refreshBtn.addEventListener('click', () => sendPostMessage(
+    { event: 'refreshEvent', operation: 'triggerMashupEvent' }, status
+  ))
+  refreshRow.appendChild(refreshBtn)
+  otherGroup.appendChild(refreshRow)
+  wrap.appendChild(otherGroup)
 
   wrap.appendChild(status)
   return wrap
@@ -454,10 +469,14 @@ async function loadEndpoints() {
   try {
     const res = await fetch('endpoints.json')
     const { endpoints } = await res.json()
-    container.appendChild(el('h2', { text: `🔗 Use Cases (endpoints) (${endpoints.length})` }))
-    endpoints.forEach(ep => container.appendChild(
-      ep.kind === 'mashup' ? buildMashupCard(ep) : buildCard(ep)
-    ))
+    const mashupMount = document.getElementById('mashup-section')
+    endpoints.forEach(ep => {
+      if (ep.kind === 'mashup') {
+        mashupMount.appendChild(buildMashupCard(ep))
+      } else {
+        container.appendChild(buildCard(ep))
+      }
+    })
     // Mark the active delay toggle now that the control has been rendered
     await loadConfig()
     // Cards exist now — wire up the sticky section nav (scroll-spy + smooth scroll)
