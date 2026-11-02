@@ -18,6 +18,12 @@
 
 * { box-sizing: border-box; }
 
+/* Smooth in-page scrolling for the section nav (disabled for reduced motion) */
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+
 body {
   margin: 0;
   font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -52,6 +58,57 @@ main.wrap { padding-top: 28px; }
   font-size: 0.9rem; word-break: break-all;
 }
 .health { margin-left: auto; font-size: 0.85rem; white-space: nowrap; }
+
+/* Sticky section navigation — lean horizontal pill bar under the header */
+.section-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: saturate(180%) blur(8px);
+  -webkit-backdrop-filter: saturate(180%) blur(8px);
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 1px 3px rgba(29, 45, 62, 0.06);
+}
+.section-nav-inner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.section-nav-inner::-webkit-scrollbar { display: none; }
+.section-nav a {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  text-decoration: none;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: 20px;
+  border: 1px solid transparent;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.section-nav a:hover {
+  color: var(--brand);
+  background: #eef4fb;
+}
+.section-nav a.active {
+  color: #fff;
+  background: var(--brand);
+  border-color: var(--brand);
+}
+
+/* Offset anchored targets so the sticky bar never hides their heading */
+#setup-panel,
+#resources-panel,
+#endpoints .card[id] {
+  scroll-margin-top: 64px;
+}
 
 /* Panels & cards */
 .panel, .card {

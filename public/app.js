@@ -109,6 +109,7 @@ function buildDelayControl() {
 function buildCard(ep) {
   const fullUrl = origin + ep.path
   const card = el('article', { class: 'card' })
+  if (ep.anchor) card.id = ep.anchor
 
   card.appendChild(el('div', { class: 'card-head' }, [
     el('span', { class: 'method', text: ep.method }),
@@ -251,6 +252,7 @@ function buildPostMessageRow(label, routingKey, getDisplayId, statusNode) {
 
 function buildMashupCard(ep) {
   const card = el('article', { class: 'card' })
+  if (ep.anchor) card.id = ep.anchor
 
   // Head — no HTTP method for a mashup, just the title + Mashup badge
   card.appendChild(el('div', { class: 'card-head' }, [
@@ -395,6 +397,58 @@ async function sendSample(ep, fullUrl, btn, result) {
   }
 }
 
+// --- section nav (scroll-spy + smooth scroll) ------------------------------
+// The sticky top bar highlights the use case currently in view and smooth-
+// scrolls to a section on click. Init runs AFTER the cards are rendered so the
+// anchor targets (card ids) actually exist in the DOM.
+
+function initSectionNav() {
+  const nav = document.getElementById('section-nav')
+  if (!nav) return
+
+  const links = Array.from(nav.querySelectorAll('a[data-target]'))
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  // Map target id -> nav link, and collect the sections that actually exist.
+  const linkByTarget = new Map()
+  const sections = []
+  links.forEach(link => {
+    const target = document.getElementById(link.dataset.target)
+    if (!target) return
+    linkByTarget.set(target.id, link)
+    sections.push(target)
+  })
+  if (!sections.length) return
+
+  function setActive(id) {
+    links.forEach(l => l.classList.toggle('active', l.dataset.target === id))
+  }
+
+  // Smooth-scroll on click (respecting reduced-motion), and set active early.
+  links.forEach(link => {
+    link.addEventListener('click', ev => {
+      const target = document.getElementById(link.dataset.target)
+      if (!target) return
+      ev.preventDefault()
+      setActive(link.dataset.target)
+      target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })
+      history.replaceState(null, '', '#' + link.dataset.target)
+    })
+  })
+
+  // Scroll-spy: highlight whichever tracked section is nearest the top.
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => { entry.target.dataset.inView = entry.isIntersecting ? '1' : '' })
+    const visible = sections
+      .filter(s => s.dataset.inView)
+      .sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)
+    if (visible.length) setActive(visible[0].id)
+  }, { rootMargin: '-45% 0px -50% 0px', threshold: 0 })
+
+  sections.forEach(s => observer.observe(s))
+  setActive(sections[0].id)
+}
+
 async function loadEndpoints() {
   const container = document.getElementById('endpoints')
   try {
@@ -406,6 +460,8 @@ async function loadEndpoints() {
     ))
     // Mark the active delay toggle now that the control has been rendered
     await loadConfig()
+    // Cards exist now — wire up the sticky section nav (scroll-spy + smooth scroll)
+    initSectionNav()
   } catch (err) {
     container.appendChild(el('p', { class: 'muted', text: 'Could not load endpoints: ' + err }))
   }
