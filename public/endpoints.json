@@ -136,6 +136,28 @@
           }
         }
       }
+    },
+    {
+      "kind": "mashup",
+      "pattern": "mashup-ui",
+      "title": "HTML Mashup (iFrame Embedding)",
+      "summary": "A mashup embeds any external web frontend directly into SAP Sales and Service Cloud V2 via an iFrame. Instead of building a separate demo page, this very dashboard is served as the mashup — so you can reuse the same host you already configured. SSC V2 can pass context into the iFrame as GET parameters (for example the record's ID and name), which this page reads from the URL and displays live in the section below. The embedded page can also talk back to the surrounding CRM shell using the browser's window.postMessage API — the buttons further down show how to trigger navigation (create, list, view and open Cases and Opportunities) in the parent application.",
+      "exampleParams": {
+        "parameter1": "value1",
+        "parameter2": "value2"
+      },
+      "routingKeysDocUrl": "https://help.sap.com/docs/CX_NG_SALES/ea5ff8b9460a43cb8765a3c07d3421fe/d8176f3fca664f488cc139b691507765.html?locale=en-US&state=PRODUCTION&version=LATEST&q=routing+key",
+      "setupSteps": [
+        "Navigate to System Settings → Mashups.",
+        "Create a new HTML mashup.",
+        "Copy and paste the Endpoint (shown above) into the mashup URL.",
+        "Click Extract Parameters.",
+        "Remove the constants for the parameters.",
+        "Maintain the first parameter as a System Parameter and link it to any available parameter.",
+        "Maintain the second parameter as a Field Binding.",
+        "Open any account record, change to Adaptation Mode, add a new tab, add a mashup to the tab, select your mashup and configure the field binding.",
+        "Test the new mashup."
+      ]
     }
   ]
 }

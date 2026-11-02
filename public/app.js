@@ -7,7 +7,8 @@ const origin = window.location.origin
 const PATTERN_LABEL = {
   'sync-external-hook': 'Sync External Hook',
   'async-autoflow': 'Async AutoFlow',
-  'sync-ui-extension': 'UI Extension'
+  'sync-ui-extension': 'UI Extension',
+  'mashup-ui': 'Mashup'
 }
 
 // --- helpers ---------------------------------------------------------------
@@ -172,6 +173,193 @@ function buildCard(ep) {
   return card
 }
 
+// --- mashup card -----------------------------------------------------------
+// The mashup use case reuses this same page embedded as an iFrame. It differs
+// from the webhook cards: no Try it / sample payload / path / responds. Instead
+// it shows an endpoint with example query params, echoes the GET parameters it
+// actually received, and offers window.postMessage navigation buttons so you
+// can test talking back to the surrounding CRM shell.
+
+// Posts a navigation message to the parent CRM shell and echoes it locally.
+function sendPostMessage(payload, statusNode) {
+  try {
+    window.parent.postMessage(payload, '*')
+    if (statusNode) {
+      statusNode.textContent = 'Sent: ' + JSON.stringify(payload)
+      statusNode.classList.remove('pm-status-warn')
+    }
+  } catch (err) {
+    if (statusNode) {
+      statusNode.textContent = 'postMessage failed: ' + String(err)
+      statusNode.classList.add('pm-status-warn')
+    }
+  }
+}
+
+// Builds one row of navigation buttons for a given entity (Case / Opportunity).
+// routingKey: 'case' or 'guidedselling'. getDisplayId returns the user-entered id.
+function buildPostMessageRow(label, routingKey, getDisplayId, statusNode) {
+  const row = el('div', { class: 'pm-row' })
+  row.appendChild(el('span', { class: 'pm-row-label', text: label }))
+
+  // Create — quick create view (no displayId needed)
+  const createBtn = el('button', { class: 'pm-btn', text: `Create ${label}` })
+  createBtn.addEventListener('click', () => sendPostMessage(
+    { operation: 'navigation', params: { routingKey, viewType: 'quickcreate' } }, statusNode
+  ))
+
+  // List — list view (no displayId needed)
+  const listBtn = el('button', { class: 'pm-btn', text: `List ${label}s` })
+  listBtn.addEventListener('click', () => sendPostMessage(
+    { operation: 'navigation', params: { routingKey, viewType: 'list' } }, statusNode
+  ))
+
+  // View — side-panel quick view (needs displayId)
+  const viewBtn = el('button', { class: 'pm-btn', text: `View ${label}` })
+  viewBtn.addEventListener('click', () => {
+    const displayId = getDisplayId()
+    if (!displayId) {
+      statusNode.textContent = `Enter a ${label} displayId first to use "View ${label}".`
+      statusNode.classList.add('pm-status-warn')
+      return
+    }
+    sendPostMessage(
+      { operation: 'navigation', params: { displayId, routingKey, viewType: 'quickview' } }, statusNode
+    )
+  })
+
+  // Open — full details page (needs displayId)
+  const openBtn = el('button', { class: 'pm-btn', text: `Open ${label}` })
+  openBtn.addEventListener('click', () => {
+    const displayId = getDisplayId()
+    if (!displayId) {
+      statusNode.textContent = `Enter a ${label} displayId first to use "Open ${label}".`
+      statusNode.classList.add('pm-status-warn')
+      return
+    }
+    sendPostMessage(
+      { operation: 'navigation', params: { displayId, routingKey, viewType: 'details' } }, statusNode
+    )
+  })
+
+  row.appendChild(createBtn)
+  row.appendChild(listBtn)
+  row.appendChild(viewBtn)
+  row.appendChild(openBtn)
+  return row
+}
+
+function buildMashupCard(ep) {
+  const card = el('article', { class: 'card' })
+
+  // Head — no HTTP method for a mashup, just the title + Mashup badge
+  card.appendChild(el('div', { class: 'card-head' }, [
+    el('h3', { text: ep.title }),
+    el('span', { class: `badge ${ep.pattern}`, text: PATTERN_LABEL[ep.pattern] || ep.pattern })
+  ]))
+
+  const summary = el('p', { class: 'summary muted', text: ep.summary })
+  if (ep.routingKeysDocUrl) {
+    summary.appendChild(document.createTextNode(' All supported entities you can find in the '))
+    summary.appendChild(el('a', { href: ep.routingKeysDocUrl, target: '_blank', rel: 'noopener', text: 'documentation' }))
+    summary.appendChild(document.createTextNode(' for the routing keys.'))
+  }
+  card.appendChild(summary)
+
+  // Endpoint = hostname + example query parameters (no path / responds / try it)
+  const params = ep.exampleParams || {}
+  const query = new URLSearchParams(params).toString()
+  const endpointUrl = query ? `${origin}?${query}` : origin
+  card.appendChild(el('p', { class: 'field-label', text: 'Endpoint (with example parameters):' }))
+  const copyBtn = el('button', { class: 'copy-btn', text: 'Copy' })
+  copyBtn.addEventListener('click', () => copyText(endpointUrl, copyBtn))
+  card.appendChild(el('div', { class: 'url-row' }, [
+    el('code', { text: endpointUrl }),
+    copyBtn
+  ]))
+
+  // Live parameters — reflects whatever GET params this page was opened with
+  card.appendChild(buildLiveParams(params))
+
+  // window.postMessage demo — unique to the mashup card
+  card.appendChild(buildPostMessageDemo())
+
+  // Setup steps (same collapsible component as the other cards)
+  const details = el('details', { class: 'setup' })
+  details.appendChild(el('summary', { text: 'How to set this up in SAP Sales and Service Cloud V2' }))
+  const ol = el('ol')
+  ep.setupSteps.forEach(step => ol.appendChild(el('li', { text: step })))
+  details.appendChild(ol)
+  card.appendChild(details)
+
+  return card
+}
+
+// Reads the current URL's query string and displays the two parameters live.
+// exampleParams is used only to know which parameter names to look for.
+function buildLiveParams(exampleParams) {
+  const wrap = el('div', { class: 'live-params' })
+  wrap.appendChild(el('strong', { text: 'Received parameters (live from this URL)' }))
+  wrap.appendChild(el('p', { class: 'muted tiny', text:
+    'When this page is embedded as a mashup, SSC V2 appends context as GET parameters. The values below update to reflect whatever this page was actually opened with.'
+  }))
+
+  const search = new URLSearchParams(window.location.search)
+  const names = Object.keys(exampleParams || {})
+  if (names.length === 0) names.push('parameter1', 'parameter2')
+  const dl = el('dl', { class: 'param-list' })
+
+  let anyReceived = false
+  names.forEach(name => {
+    const value = search.get(name)
+    if (value !== null) anyReceived = true
+    dl.appendChild(el('dt', { text: name }))
+    dl.appendChild(el('dd', value !== null
+      ? { text: value }
+      : { class: 'param-missing', text: '— not transmitted —' }))
+  })
+  wrap.appendChild(dl)
+
+  if (!anyReceived) {
+    wrap.appendChild(el('p', { class: 'muted tiny', text:
+      'No parameters received yet. Try opening this page with, e.g., ?parameter1=value1&parameter2=value2 — or let SSC V2 supply them once the mashup is configured.'
+    }))
+  }
+  return wrap
+}
+
+function buildPostMessageDemo() {
+  const wrap = el('div', { class: 'pm-demo' })
+  wrap.appendChild(el('strong', { text: 'Interact with the CRM shell (window.postMessage)' }))
+  wrap.appendChild(el('p', { class: 'muted tiny', text:
+    'These buttons send a navigation message to the overlaying SSC V2 application via window.parent.postMessage. "View" opens the record in a side panel (quickview); "Open" navigates to the full details page. Both need a displayId from one of your own records.'
+  }))
+
+  // Case displayId input
+  const caseInput = el('input', { class: 'pm-input', type: 'text', placeholder: 'Case displayId (e.g. 45)' })
+  wrap.appendChild(el('div', { class: 'pm-input-row' }, [
+    el('label', { class: 'pm-input-label', text: 'Case displayId:' }),
+    caseInput
+  ]))
+
+  // Opportunity displayId input
+  const oppInput = el('input', { class: 'pm-input', type: 'text', placeholder: 'Opportunity displayId (e.g. 2000042)' })
+  wrap.appendChild(el('div', { class: 'pm-input-row' }, [
+    el('label', { class: 'pm-input-label', text: 'Opportunity displayId:' }),
+    oppInput
+  ]))
+
+  const status = el('p', { class: 'pm-status muted tiny', text: 'No message sent yet.' })
+
+  // Row 1 — Case (routingKey: case)
+  wrap.appendChild(buildPostMessageRow('Case', 'case', () => caseInput.value.trim(), status))
+  // Row 2 — Opportunity (routingKey: guidedselling)
+  wrap.appendChild(buildPostMessageRow('Opportunity', 'guidedselling', () => oppInput.value.trim(), status))
+
+  wrap.appendChild(status)
+  return wrap
+}
+
 async function sendSample(ep, fullUrl, btn, result) {
   btn.disabled = true
   const label = btn.textContent
@@ -213,7 +401,9 @@ async function loadEndpoints() {
     const res = await fetch('endpoints.json')
     const { endpoints } = await res.json()
     container.appendChild(el('h2', { text: `🔗 Use Cases (endpoints) (${endpoints.length})` }))
-    endpoints.forEach(ep => container.appendChild(buildCard(ep)))
+    endpoints.forEach(ep => container.appendChild(
+      ep.kind === 'mashup' ? buildMashupCard(ep) : buildCard(ep)
+    ))
     // Mark the active delay toggle now that the control has been rendered
     await loadConfig()
   } catch (err) {
