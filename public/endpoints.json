@@ -165,6 +165,37 @@
         "Test the new mashup and the buttons below.",
         "Note: For testing the 'Refresh Rase' you need to do inside the case."
       ]
+    },
+    {
+      "kind": "api",
+      "pattern": "signals-api",
+      "anchor": "uc-apis",
+      "title": "Signals API — Post an External Highlight",
+      "summary": "A chosen example of calling the SSC V2 REST API. The Insights Signals API lets an external system POST a highlight for any account; SSC V2 then surfaces it in that account's 360 view.",
+      "apiPath": "/sap/c4c/api/v1/insights-signals-service/signals",
+      "proxyPath": "/api/signals",
+      "docUrl": "https://api.sap.com/package/SAPSalesServiceCloudV2/rest",
+      "sample": {
+        "signalType": "genericSignal",
+        "object": {
+          "objectType": "ACCOUNT",
+          "id": "01a15933-bbd8-7aac-885b-2dcb03548680"
+        },
+        "score": 70,
+        "message": "abandoned shopping cart",
+        "source": {
+          "url": "https://www.google.com/search?q=abandoned+shopping+cart",
+          "event": "commerce event",
+          "createdOn": "2026-10-20T06:09:34.078+00:00"
+        }
+      },
+      "setupSteps": [
+        "No communication system or hook configuration is needed for this one — it calls the CRM directly using the credentials this service already has.",
+        "Copy an account's technical ID (UUID) from SSC V2 and paste it into the Account UUID field below.",
+        "Optionally adjust the message and score, then click 'Post Signal'.",
+        "Open that account in SSC V2 and check the 360 view / Insights area to see the external highlight appear.",
+        "This is only one example — the full REST API catalogue with Swagger examples is in the official documentation (linked above)."
+      ]
     }
   ]
 }

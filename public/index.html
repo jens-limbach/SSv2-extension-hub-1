@@ -30,6 +30,7 @@
       <a href="#uc-autoflow" data-target="uc-autoflow">Autoflows</a>
       <a href="#uc-alerts" data-target="uc-alerts">Alerts</a>
       <a href="#uc-key-metrics" data-target="uc-key-metrics">Key Metrics</a>
+      <a href="#uc-apis" data-target="uc-apis">APIs</a>
       <a href="#resources-panel" data-target="resources-panel">Help</a>
     </div>
   </nav>
@@ -80,6 +81,24 @@
 
     <!-- Endpoint cards render here -->
     <section id="endpoints"></section>
+
+    <!-- APIs: one special example (Signals API). Card renders into #apis-section. -->
+    <section class="panel" id="apis-panel">
+      <h2>🛰️ APIs</h2>
+      <p class="muted">
+        The use cases above are all cases where SAP Sales and Service Cloud V2
+        calls <em>into</em> this microservice. This final section flips the
+        direction and shows <strong>one deliberately-chosen example</strong> of
+        calling an SSC V2 REST API <em>outbound</em> — the
+        <strong>Signals API</strong>, which posts an external highlight for an
+        account so it appears in that account's 360 view. We keep it to this one
+        example on purpose: the full REST API catalogue, including Swagger
+        examples, is already covered in the official
+        <a href="https://api.sap.com/package/SAPSalesServiceCloudV2/rest">API documentation</a>.
+      </p>
+      <!-- Signals API card renders here -->
+      <div id="apis-section"></div>
+    </section>
 
     <!-- Viewing logs -->
     <section class="panel" id="logs-panel">
@@ -180,6 +199,12 @@ cf logs crm-extension-hub --recent</code></pre>
           <strong>Vibe Coded Extension</strong>
           <span class="resource-links">
             (<a href="https://sapvideo.cfapps.eu10-004.hana.ondemand.com/?entry_id=1_uxs64cwt">video</a>)
+          </span>
+        </div>
+        <div class="resource-item">
+          <strong>Extension Hub (this here!)</strong>
+          <span class="resource-links">
+            (<a href="https://github.com/jens-limbach/SSv2-extension-hub-1">github</a>)
           </span>
         </div>
       </div>

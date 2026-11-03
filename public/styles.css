@@ -10,6 +10,7 @@
   --async: #c35500;
   --ui: #6a3fb5;
   --mashup: #0a8f8f;
+  --signals: #b02a7a;
   --code-bg: #1d2d3e;
   --code-ink: #e8edf2;
   --ok: #107e3e;
@@ -165,6 +166,7 @@ main.wrap { padding-top: 28px; }
 .badge.async-autoflow { background: var(--async); }
 .badge.sync-ui-extension { background: var(--ui); }
 .badge.mashup-ui { background: var(--mashup); }
+.badge.signals-api { background: var(--signals); }
 .method {
   font-family: ui-monospace, monospace; font-size: 0.72rem; font-weight: 700;
   background: var(--ink); color: #fff; padding: 2px 7px; border-radius: 4px;
@@ -262,6 +264,10 @@ details.setup li { margin-bottom: 5px; }
   font-size: 0.86rem; font-weight: 600;
 }
 .pm-btn:hover { background: var(--mashup); color: #fff; }
+
+/* Signals API card — reuse .pm-btn but tint it with the signals colour */
+#apis-panel .pm-btn { border-color: var(--signals); color: var(--signals); }
+#apis-panel .pm-btn:hover { background: var(--signals); color: #fff; }
 .pm-status {
   margin: 10px 0 0; word-break: break-all;
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;

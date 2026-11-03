@@ -19,7 +19,7 @@ Get from zero to a running microservice in five steps with a simple web interfac
 4. **Deploy to Cloud Foundry** — From the project folder, push the app and set your CRM credentials:
    ```bash
    cf push
-   cf set-env crm-extension-hub CRM_BASE_URL "myxxxxxxx.de1.demo.crm.cloud.sap"
+   cf set-env crm-extension-hub CRM_BASE_URL "https://myxxxxxxx.de1.demo.crm.cloud.sap"
    cf set-env crm-extension-hub CRM_USERNAME "your-username"
    cf set-env crm-extension-hub CRM_PASSWORD "your-password"
    cf restage crm-extension-hub

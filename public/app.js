@@ -8,7 +8,8 @@ const PATTERN_LABEL = {
   'sync-external-hook': 'Sync External Hook',
   'async-autoflow': 'Async AutoFlow',
   'sync-ui-extension': 'UI Extension',
-  'mashup-ui': 'Mashup'
+  'mashup-ui': 'Mashup',
+  'signals-api': 'Signals API'
 }
 
 // --- helpers ---------------------------------------------------------------
@@ -296,6 +297,135 @@ function buildMashupCard(ep) {
   return card
 }
 
+// --- signals API card ------------------------------------------------------
+// The APIs section's single example. Unlike the webhook cards, this does NOT
+// get called by SSC V2 — the browser posts the user's inputs to our own
+// /api/signals proxy, which forwards an authenticated POST to the CRM's
+// Insights Signals API. Reuses the .pm-input / .pm-btn / .result styling.
+
+function buildSignalsCard(ep) {
+  const card = el('article', { class: 'card' })
+  if (ep.anchor) card.id = ep.anchor
+
+  // Head — no HTTP method badge, just the title + Signals API badge
+  card.appendChild(el('div', { class: 'card-head' }, [
+    el('h3', { text: ep.title }),
+    el('span', { class: `badge ${ep.pattern}`, text: PATTERN_LABEL[ep.pattern] || ep.pattern })
+  ]))
+
+  const summary = el('p', { class: 'summary muted', text: ep.summary })
+  if (ep.docUrl) {
+    summary.appendChild(document.createTextNode(' Full API reference & Swagger: '))
+    summary.appendChild(el('a', { href: ep.docUrl, target: '_blank', rel: 'noopener', text: 'api.sap.com' }))
+    summary.appendChild(document.createTextNode('.'))
+  }
+  card.appendChild(summary)
+
+  // CRM API path this proxy forwards to (read-only, with copy button)
+  if (ep.apiPath) {
+    card.appendChild(el('p', { class: 'field-label', text: 'CRM API path (called by this service):' }))
+    const copyBtn = el('button', { class: 'copy-btn', text: 'Copy' })
+    copyBtn.addEventListener('click', () => copyText(ep.apiPath, copyBtn))
+    card.appendChild(el('div', { class: 'url-row' }, [
+      el('code', { text: ep.apiPath }),
+      copyBtn
+    ]))
+  }
+
+  // Sample payload (pretty-printed) so learners see the full shape being sent.
+  card.appendChild(el('p', { class: 'field-label', text: 'Sample payload:' }))
+  card.appendChild(el('pre', { class: 'json' }, el('code', { text: JSON.stringify(ep.sample, null, 2) })))
+
+  // Input fields — Account UUID, message, score (prefilled from the sample).
+  const sample = ep.sample || {}
+  const wrap = el('div', { class: 'pm-demo' })
+  wrap.appendChild(el('strong', { text: 'Post a signal' }))
+  wrap.appendChild(el('p', { class: 'muted tiny', text:
+    'Paste an account UUID, optionally tweak the message and score, then post the signal. It will appear in that account\u2019s 360 view.'
+  }))
+
+  const accountInput = el('input', { class: 'pm-input', type: 'text',
+    placeholder: 'Account UUID (e.g. 01a15933-bbd8-7aac-885b-2dcb03548680)' })
+  const messageInput = el('input', { class: 'pm-input', type: 'text', value: sample.message || '' })
+  const scoreInput = el('input', { class: 'pm-input', type: 'number', value: sample.score ?? 70 })
+
+  const group = el('div', { class: 'pm-group' })
+  group.appendChild(el('div', { class: 'pm-input-row' }, [
+    el('label', { class: 'pm-input-label', text: 'Account UUID:' }), accountInput
+  ]))
+  group.appendChild(el('div', { class: 'pm-input-row' }, [
+    el('label', { class: 'pm-input-label', text: 'Message:' }), messageInput
+  ]))
+  group.appendChild(el('div', { class: 'pm-input-row' }, [
+    el('label', { class: 'pm-input-label', text: 'Score:' }), scoreInput
+  ]))
+  wrap.appendChild(group)
+
+  const result = el('div', { class: 'result' })
+  const postBtn = el('button', { class: 'pm-btn', text: 'Post Signal' })
+  postBtn.addEventListener('click', () => postSignal({
+    accountId: accountInput.value.trim(),
+    message: messageInput.value.trim(),
+    score: scoreInput.value
+  }, postBtn, result))
+
+  wrap.appendChild(el('div', { class: 'pm-row' }, [postBtn]))
+  card.appendChild(wrap)
+  card.appendChild(result)
+
+  // Setup steps (same collapsible component as the other cards)
+  const details = el('details', { class: 'setup' })
+  details.appendChild(el('summary', { text: 'How to use this' }))
+  const ol = el('ol')
+  ep.setupSteps.forEach(step => ol.appendChild(el('li', { text: step })))
+  details.appendChild(ol)
+  card.appendChild(details)
+
+  return card
+}
+
+// Sends the signal via our own /api/signals proxy and renders the response.
+async function postSignal(body, btn, result) {
+  if (!body.accountId) {
+    result.innerHTML = ''
+    result.appendChild(el('div', { class: 'meta' }, el('span', { class: 'status-bad', text: 'Enter an Account UUID first.' })))
+    result.classList.add('show')
+    return
+  }
+  btn.disabled = true
+  const label = btn.textContent
+  btn.textContent = 'Posting\u2026'
+  const started = performance.now()
+  try {
+    const res = await fetch('/api/signals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    })
+    const ms = Math.round(performance.now() - started)
+    let bodyText
+    try { bodyText = JSON.stringify(await res.json(), null, 2) }
+    catch { bodyText = await res.text() }
+
+    result.innerHTML = ''
+    const statusClass = res.ok ? 'status-ok' : 'status-bad'
+    const meta = el('div', { class: 'meta' })
+    meta.appendChild(el('span', { class: statusClass, text: `${res.status} ${res.statusText}` }))
+    meta.appendChild(document.createTextNode(` \u00b7 ${ms} ms round-trip`))
+    result.appendChild(meta)
+    result.appendChild(el('pre', { class: 'json' }, el('code', { text: bodyText })))
+    result.classList.add('show')
+  } catch (err) {
+    result.innerHTML = ''
+    result.appendChild(el('div', { class: 'meta' }, el('span', { class: 'status-bad', text: 'Request failed' })))
+    result.appendChild(el('pre', { class: 'json' }, el('code', { text: String(err) })))
+    result.classList.add('show')
+  } finally {
+    btn.disabled = false
+    btn.textContent = label
+  }
+}
+
 // Reads the current URL's query string and displays the two parameters live.
 // exampleParams is used only to know which parameter names to look for.
 function buildLiveParams(exampleParams) {
@@ -470,9 +600,12 @@ async function loadEndpoints() {
     const res = await fetch('endpoints.json')
     const { endpoints } = await res.json()
     const mashupMount = document.getElementById('mashup-section')
+    const apisMount = document.getElementById('apis-section')
     endpoints.forEach(ep => {
       if (ep.kind === 'mashup') {
         mashupMount.appendChild(buildMashupCard(ep))
+      } else if (ep.kind === 'api') {
+        if (apisMount) apisMount.appendChild(buildSignalsCard(ep))
       } else {
         container.appendChild(buildCard(ep))
       }

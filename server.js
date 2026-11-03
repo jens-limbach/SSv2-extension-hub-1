@@ -503,6 +503,79 @@ app.post('/webhooks/account-insights-chart', (req, res) => {
 })
 
 // ============================================================================
+// SIGNALS API DEMO — outbound proxy (NOT an SSC-triggered hook)
+// ============================================================================
+//
+// Unlike every endpoint above (which SSC V2 calls *into* as an inbound webhook /
+// UI extension), this route demonstrates calling an SSC V2 REST API *outbound*.
+// It is a thin demonstration proxy for the "Insights Signals" API, which POSTs
+// an external highlight for an account so it shows up in that account's 360 view.
+//
+// It lives in this service for two practical reasons:
+//   1. Credentials — the CRM Basic-Auth credentials exist only here (env vars);
+//      firing this from the browser would leak them in DevTools / network tab.
+//   2. CORS — the CRM tenant will not accept an authenticated cross-origin POST
+//      from an arbitrary browser origin.
+// It reuses the same callCrmApi() helper and CRM_BASE_URL hostname as the async
+// write-back above, so it is the same outbound-to-CRM pattern — not a new one.
+//
+// Official docs & Swagger for the full API catalogue:
+//   https://api.sap.com/package/SAPSalesServiceCloudV2/rest
+//
+// Request body (from the dashboard): { accountId, message, score }
+// Response: the CRM's status + body is passed back to the dashboard.
+app.post('/api/signals', async (req, res) => {
+  try {
+    const { accountId, message, score } = req.body || {}
+
+    if (!accountId || typeof accountId !== 'string') {
+      return res.status(400).json({ error: 'Missing required field: accountId (Account UUID)' })
+    }
+
+    // Build the exact Signals payload. createdOn is stamped server-side.
+    const payload = {
+      signalType: 'genericSignal',
+      object: {
+        objectType: 'ACCOUNT',
+        id: accountId.trim()
+      },
+      score: Number.isFinite(Number(score)) ? Number(score) : 70,
+      message: (typeof message === 'string' && message.trim()) ? message.trim() : 'abandoned shopping cart',
+      source: {
+        url: 'https://www.google.com/search?q=abandoned+shopping+cart',
+        event: 'commerce event',
+        createdOn: new Date().toISOString()
+      }
+    }
+
+    console.log(`📡 Posting signal for account ${payload.object.id} (score ${payload.score})`)
+
+    const crmResponse = await callCrmApi('/sap/c4c/api/v1/insights-signals-service/signals', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+
+    // Echo the CRM response back to the dashboard. Signals typically returns an
+    // empty body with 2xx — handle both JSON and empty responses gracefully.
+    let crmBody
+    try { crmBody = await crmResponse.json() }
+    catch { crmBody = await crmResponse.text() }
+
+    console.log(`✅ Signal posted for account ${payload.object.id} (CRM ${crmResponse.status})`)
+
+    res.status(crmResponse.status).json({
+      status: crmResponse.status,
+      sentPayload: payload,
+      crmResponse: crmBody || '(empty body)'
+    })
+
+  } catch (error) {
+    console.error('❌ Signals API error:', error.message)
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// ============================================================================
 // START SERVER
 // ============================================================================
 
@@ -514,5 +587,6 @@ app.listen(PORT, () => {
   console.log(`📍 Score (async):      http://localhost:${PORT}/webhooks/calculate-score-async`)
   console.log(`📍 Urgent opp task:    http://localhost:${PORT}/webhooks/create-urgent-opportunity-task`)
   console.log(`📍 External alerts:    http://localhost:${PORT}/webhooks/external-alerts`)
-  console.log(`📍 Insights chart:     http://localhost:${PORT}/webhooks/account-insights-chart\n`)
+  console.log(`📍 Insights chart:     http://localhost:${PORT}/webhooks/account-insights-chart`)
+  console.log(`📍 Signals API (demo): http://localhost:${PORT}/api/signals\n`)
 })
