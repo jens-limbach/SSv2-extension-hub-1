@@ -293,8 +293,7 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
 /* Further resources */
 .resource-grid {
   display: grid;
-  grid-auto-flow: column;
-  grid-template-rows: repeat(3, auto);
+  grid-auto-flow: row;
   grid-template-columns: repeat(3, 1fr);
   gap: 14px 24px;
   margin-top: 12px;
