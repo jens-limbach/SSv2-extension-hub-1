@@ -49,9 +49,12 @@ main.wrap { padding-top: 28px; }
 .tagline em { font-style: normal; background: rgba(255,255,255,0.2); padding: 0 4px; border-radius: 3px; }
 
 .hostbar {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  display: flex; flex-direction: column; gap: 8px;
   background: rgba(255,255,255,0.12);
   padding: 10px 14px; border-radius: 8px;
+}
+.hostbar-row {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
 }
 .hostbar .label { font-size: 0.85rem; opacity: 0.9; }
 .hostbar code {
@@ -59,6 +62,27 @@ main.wrap { padding-top: 28px; }
   font-size: 0.9rem; word-break: break-all;
 }
 .health { margin-left: auto; font-size: 0.85rem; white-space: nowrap; }
+
+/* Tenant badge in the blue header hostbar */
+.tenant-badge {
+  margin-left: auto; font-size: 0.8rem; white-space: nowrap;
+  padding: 2px 10px; border-radius: 20px; font-weight: 600;
+}
+.tenant-badge.tenant-default { background: rgba(255,255,255,0.22); }
+.tenant-badge.tenant-temp { background: var(--async); color: #fff; }
+
+/* Pencil edit button that jumps to the Tenant (temporary) section.
+   align-self: stretch makes it match the height of the adjacent <code> box. */
+.tenant-edit {
+  display: inline-flex; align-items: center; justify-content: center;
+  align-self: stretch;
+  text-decoration: none; cursor: pointer;
+  font-size: 0.9rem; line-height: 1; opacity: 0.9;
+  background: rgba(0,0,0,0.25);
+  padding: 0 8px; border-radius: 5px;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+.tenant-edit:hover { opacity: 1; background: rgba(0,0,0,0.4); }
 
 /* Sticky section navigation — lean horizontal pill bar under the header */
 .section-nav {
@@ -106,8 +130,11 @@ main.wrap { padding-top: 28px; }
 
 /* Offset anchored targets so the sticky bar never hides their heading */
 #setup-panel,
+#tenant-panel,
 #resources-panel,
-#endpoints .card[id] {
+#apis-panel,
+#endpoints .card[id],
+#mashup-section .card[id] {
   scroll-margin-top: 64px;
 }
 

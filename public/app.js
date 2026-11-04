@@ -70,9 +70,127 @@ function markActiveToggle(delay) {
 async function loadConfig() {
   try {
     const res = await fetch('/api/config')
-    const { asyncScoreDelayMs } = await res.json()
+    const { asyncScoreDelayMs, tenant } = await res.json()
     markActiveToggle(asyncScoreDelayMs)
+    if (tenant) renderTenantStatus(tenant)
   } catch { /* ignore */ }
+}
+
+// --- temporary tenant override --------------------------------------------
+// Mirrors the delay toggle: talks to the same /api/config channel. The server
+// only ever returns host + flags (never the credentials), and auto-reverts to
+// the default host after 15 minutes.
+
+let tenantCountdownTimer = null
+
+function fmtRemaining(ms) {
+  const total = Math.max(0, Math.round(ms / 1000))
+  const m = String(Math.floor(total / 60)).padStart(2, '0')
+  const s = String(total % 60).padStart(2, '0')
+  return `${m}:${s}`
+}
+
+function renderTenantStatus(tenant) {
+  const originNode = document.getElementById('tenant-origin')
+  const badge = document.getElementById('tenant-badge')
+  const defaultHost = document.getElementById('tenant-default-host')
+  if (defaultHost) defaultHost.textContent = tenant.defaultBaseUrl || '(unknown)'
+  if (originNode) originNode.textContent = tenant.baseUrl || '(unknown)'
+
+  if (tenantCountdownTimer) { clearInterval(tenantCountdownTimer); tenantCountdownTimer = null }
+
+  if (!badge) return
+  if (tenant.isOverridden && tenant.expiresAt) {
+    badge.classList.remove('tenant-default')
+    badge.classList.add('tenant-temp')
+    const tick = () => {
+      const left = tenant.expiresAt - Date.now()
+      if (left <= 0) {
+        clearInterval(tenantCountdownTimer); tenantCountdownTimer = null
+        loadConfig() // confirm server-side revert and repaint
+        return
+      }
+      badge.textContent = `temporary · ${fmtRemaining(left)} left`
+    }
+    tick()
+    tenantCountdownTimer = setInterval(tick, 1000)
+  } else {
+    badge.classList.remove('tenant-temp')
+    badge.classList.add('tenant-default')
+    badge.textContent = 'default'
+  }
+}
+
+function setTenantStatusMsg(msg, isError) {
+  const node = document.getElementById('tenant-status')
+  if (!node) return
+  node.textContent = msg || ''
+  node.classList.toggle('pm-status-warn', !!isError)
+}
+
+async function activateTenant() {
+  const baseUrl = document.getElementById('tenant-baseurl').value.trim()
+  const username = document.getElementById('tenant-username').value.trim()
+  const password = document.getElementById('tenant-password').value
+  if (!baseUrl || !username || !password) {
+    setTenantStatusMsg('Please fill in Base URL, Username and Password.', true)
+    return
+  }
+  try {
+    const res = await fetch('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tenant: { baseUrl, username, password } })
+    })
+    const body = await res.json()
+    if (!res.ok) {
+      setTenantStatusMsg(body.error || 'Activation failed.', true)
+      return
+    }
+    setTenantStatusMsg(`✅ Override active — pointing at ${body.tenant.baseUrl}`, false)
+    renderTenantStatus(body.tenant)
+  } catch (err) {
+    setTenantStatusMsg('Request failed: ' + err, true)
+  }
+}
+
+async function deactivateTenant() {
+  try {
+    const res = await fetch('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tenant: null })
+    })
+    const body = await res.json()
+    if (!res.ok) {
+      setTenantStatusMsg(body.error || 'Deactivation failed.', true)
+      return
+    }
+    setTenantStatusMsg(`🔄 Back to default host — ${body.tenant.baseUrl}`, false)
+    renderTenantStatus(body.tenant)
+  } catch (err) {
+    setTenantStatusMsg('Request failed: ' + err, true)
+  }
+}
+
+function initTenantControl() {
+  const activate = document.getElementById('tenant-activate')
+  const deactivate = document.getElementById('tenant-deactivate')
+  if (activate) activate.addEventListener('click', activateTenant)
+  if (deactivate) deactivate.addEventListener('click', deactivateTenant)
+
+  // Pencil button in the header smooth-scrolls to the Tenant section.
+  const edit = document.getElementById('tenant-edit')
+  if (edit) {
+    edit.addEventListener('click', ev => {
+      const target = document.getElementById('tenant-panel')
+      if (!target) return
+      ev.preventDefault()
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })
+      history.replaceState(null, '', '#tenant-panel')
+    })
+  }
 }
 
 async function setDelay(delay) {
@@ -623,5 +741,9 @@ async function loadEndpoints() {
 
 refreshHealth()
 setInterval(refreshHealth, 15000)
+initTenantControl()
+loadConfig()
+// Keep the tenant host/badge in sync (e.g. after a 15-min auto-revert)
+setInterval(loadConfig, 15000)
 loadEndpoints()
 

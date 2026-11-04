@@ -22,9 +22,43 @@ if (!CRM_BASE_URL || !CRM_USERNAME || !CRM_PASSWORD) {
   process.exit(1)
 }
 
-// Create Basic Auth header
-const authString = `${CRM_USERNAME}:${CRM_PASSWORD}`
-const authHeader = 'Basic ' + Buffer.from(authString).toString('base64')
+// Build a Basic Auth header from a username/password pair.
+function authHeaderFor(username, password) {
+  return 'Basic ' + Buffer.from(`${username}:${password}`).toString('base64')
+}
+
+// ---------------------------------------------------------------------------
+// TENANT TARGET (default + temporary override)
+//
+// Demo-only, in-memory, per-instance, NOT persisted — same philosophy as the
+// async-delay toggle below. The DEFAULT tenant always comes from the env vars
+// (the correct, safe way). The educational dashboard may TEMPORARILY point this
+// microservice at a different tenant for a live demo; after 15 minutes (or on
+// "Deactivate") it reverts to the default. Nothing is written to disk and a
+// restart always resets to the env-provided default.
+//
+// Credentials entered in the dashboard are only ever SENT here on activation —
+// the status endpoint returns the host + flags only and NEVER echoes the
+// username/password back to the browser.
+// ---------------------------------------------------------------------------
+const DEFAULT_TENANT = Object.freeze({
+  baseUrl: CRM_BASE_URL,
+  authHeader: authHeaderFor(CRM_USERNAME, CRM_PASSWORD)
+})
+
+const TENANT_OVERRIDE_TTL_MS = 15 * 60 * 1000 // 15 minutes
+
+let activeTenant = { ...DEFAULT_TENANT }
+let tenantOverrideExpiresAt = null // ms epoch while overridden, else null
+let tenantRevertTimer = null
+
+function resetTenantToDefault(reason = 'manual') {
+  if (tenantRevertTimer) clearTimeout(tenantRevertTimer)
+  tenantRevertTimer = null
+  tenantOverrideExpiresAt = null
+  activeTenant = { ...DEFAULT_TENANT }
+  console.log(`🔄 Tenant override cleared (${reason}) — back to default: ${DEFAULT_TENANT.baseUrl}`)
+}
 
 // Opportunity priority code for "Urgent" — adjust if your tenant uses a different value
 const PRIORITY_URGENT = '2'
@@ -69,11 +103,11 @@ console.log('✅ Credentials loaded successfully')
  * Makes an authenticated API call to SAP CRM
  */
 async function callCrmApi(endpoint, options = {}) {
-  const url = `${CRM_BASE_URL}${endpoint}`
+  const url = `${activeTenant.baseUrl}${endpoint}`
   
   const defaultOptions = {
     headers: {
-      'Authorization': authHeader,
+      'Authorization': activeTenant.authHeader,
       'Content-Type': 'application/json'
     }
   }
@@ -171,27 +205,80 @@ async function createUrgentOpportunityTask(opportunityId, opportunityDisplayId, 
 // DASHBOARD API (used by the educational frontend in /public)
 // ============================================================================
 
+// Builds the safe, secret-free tenant status returned to the dashboard.
+// NEVER includes username/password — only the host and override flags.
+function tenantStatus() {
+  const isOverridden = activeTenant.baseUrl !== DEFAULT_TENANT.baseUrl
+  return {
+    baseUrl: activeTenant.baseUrl,
+    defaultBaseUrl: DEFAULT_TENANT.baseUrl,
+    isOverridden,
+    expiresAt: isOverridden ? tenantOverrideExpiresAt : null
+  }
+}
+
 /**
  * Returns the current live demo configuration.
  */
 app.get('/api/config', (req, res) => {
-  res.json({ asyncScoreDelayMs })
+  res.json({ asyncScoreDelayMs, tenant: tenantStatus() })
 })
 
 /**
- * Updates the live demo configuration (currently just the async delay).
+ * Updates the live demo configuration. Handles two independent concerns,
+ * each only when its key is present in the body:
+ *
+ *   • asyncScoreDelayMs — the async-demo processing delay (0 or 10000).
+ *   • tenant            — a TEMPORARY tenant override (demo-only, in-memory):
+ *       - { tenant: { baseUrl, username, password } } → activate for 15 min
+ *       - { tenant: null } (or { tenant: { reset: true } }) → back to default
+ *
  * In-memory, demo-only: resets on restart and is per-instance.
  */
 app.post('/api/config', (req, res) => {
-  const value = req.body?.asyncScoreDelayMs
+  const body = req.body || {}
 
-  if (value !== 0 && value !== 10000) {
-    return res.status(400).json({ error: 'asyncScoreDelayMs must be 0 or 10000' })
+  // --- async delay (existing behaviour) ---
+  if ('asyncScoreDelayMs' in body) {
+    const value = body.asyncScoreDelayMs
+    if (value !== 0 && value !== 10000) {
+      return res.status(400).json({ error: 'asyncScoreDelayMs must be 0 or 10000' })
+    }
+    asyncScoreDelayMs = value
+    console.log(`✅ Async score delay set to ${asyncScoreDelayMs}ms via dashboard`)
   }
 
-  asyncScoreDelayMs = value
-  console.log(`✅ Async score delay set to ${asyncScoreDelayMs}ms via dashboard`)
-  res.json({ asyncScoreDelayMs })
+  // --- temporary tenant override ---
+  if ('tenant' in body) {
+    const t = body.tenant
+
+    // Deactivate: null, or an explicit { reset: true }
+    if (t === null || (t && t.reset === true)) {
+      resetTenantToDefault('dashboard deactivate')
+    } else if (t && typeof t === 'object') {
+      const baseUrl = typeof t.baseUrl === 'string' ? t.baseUrl.trim().replace(/\/+$/, '') : ''
+      const username = typeof t.username === 'string' ? t.username : ''
+      const password = typeof t.password === 'string' ? t.password : ''
+
+      if (!baseUrl || !username || !password) {
+        return res.status(400).json({ error: 'tenant requires baseUrl, username and password' })
+      }
+      if (!/^https:\/\//i.test(baseUrl)) {
+        return res.status(400).json({ error: 'tenant baseUrl must start with https://' })
+      }
+
+      if (tenantRevertTimer) clearTimeout(tenantRevertTimer)
+      activeTenant = { baseUrl, authHeader: authHeaderFor(username, password) }
+      tenantOverrideExpiresAt = Date.now() + TENANT_OVERRIDE_TTL_MS
+      tenantRevertTimer = setTimeout(() => resetTenantToDefault('15-minute timeout'), TENANT_OVERRIDE_TTL_MS)
+      tenantRevertTimer.unref?.() // don't keep the process alive just for this
+      console.log(`🔶 Tenant override active: ${baseUrl} (15 min)`)
+    } else {
+      return res.status(400).json({ error: 'tenant must be an object or null' })
+    }
+  }
+
+  res.json({ asyncScoreDelayMs, tenant: tenantStatus() })
 })
 
 // ============================================================================
@@ -210,9 +297,9 @@ app.get('/health', (req, res) => {
 })
 
 /**
- * SYNC AUTOFLOW — Account
+ * SYNC External Hook — Account
  *
- * Triggered by a Synchronous AutoFlow in SSC V2.
+ * Triggered by a Synchronous External Hook in SSC V2.
  * SSC V2 waits for this response before completing the save — the result
  * is written directly into the record without a separate API call.
  *

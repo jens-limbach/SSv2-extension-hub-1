@@ -39,8 +39,11 @@ The service serves an educational dashboard at its **root URL** (`/`). It is pla
 - Per-endpoint **"How to set this up in SAP Sales and Service Cloud V2"** step-by-step instructions
 - **"Try it"** buttons that POST a realistic sample payload so you can see sync (`200`) vs. async (`202`) behaviour without a live tenant
 - A **delay toggle** for the async score webhook (10s slow ⟷ 0s instant)
+- A **Tenant (temporary)** section to point the service at a different tenant for a quick demo
 
 The delay toggle is **in-memory and demo-only**: it resets on restart and affects a single instance. It is driven by `GET`/`POST /api/config`; the endpoint catalogue is a static file served at `/endpoints.json` (source: `public/endpoints.json`).
+
+The **Tenant (temporary)** section reuses the same `GET`/`POST /api/config` channel to temporarily override the target host and credentials for a live demo — handy when you want to show a different tenant without editing env vars and restaging. It is also **in-memory, demo-only and per-instance**: it is never persisted, auto-reverts to the `CRM_BASE_URL` default after **15 minutes** (or when you press **Deactivate**), and resets on restart. For safety the status endpoint only ever returns the host and override flags — the username/password are never persisted server-side or echoed back to the browser (the values you type stay only in the dashboard's form fields). The **"Connected tenant:"** line in the blue header always shows which tenant the service currently points at.
 
 ### Viewing logs
 
