@@ -20,10 +20,11 @@ A local Node.js install is *optional* — it is not required to deploy.
 
 4. **Deploy to Cloud Foundry** — From the project folder, push the app and set your CRM credentials:
    ```bash
+   cf login -a https://your-cloud-foundry-api-endpoint.com
    cf push
-   cf set-env crm-extension-hub CRM_BASE_URL "https://myxxxxxxx.de1.demo.crm.cloud.sap"
-   cf set-env crm-extension-hub CRM_USERNAME "your-username"
-   cf set-env crm-extension-hub CRM_PASSWORD "your-password"
+   cf set-env crm-extension-hub CRM_BASE_URL 'https://myxxxxxxx.de1.demo.crm.cloud.sap'
+   cf set-env crm-extension-hub CRM_USERNAME 'your-username'
+   cf set-env crm-extension-hub CRM_PASSWORD 'your-password'
    cf restage crm-extension-hub
    ```
    Replace the app name (`crm-extension-hub`, defined in `manifest.yml`) and the values with your own.
