@@ -6,7 +6,7 @@ A minimal Express-based webhook microservice for SAP Sales and Service Cloud V2 
 
 Get from zero to a running microservice in five steps with a simple web interface that leads you step by step through the configuration.
 
-1. **Prerequisites** — A Cloud Foundry account with a target space, and the `cf` CLI installed and logged in (`cf login`). You can use SAP Build Code on a [free SAP BTP Trial](https://www.sap.com/products/technology-platform/trial.html)  account.
+1. **Prerequisites** — A Cloud Foundry account with a target space, and the `cf` CLI installed and logged in (`cf login`). You can use SAP Business Application Studio on a [free SAP BTP Trial](https://www.sap.com/products/technology-platform/trial.html)  account.
 
 A local Node.js install is *optional* — it is not required to deploy.
 
