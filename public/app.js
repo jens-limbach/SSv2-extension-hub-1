@@ -173,24 +173,60 @@ async function deactivateTenant() {
   }
 }
 
+// --- tenant modal ----------------------------------------------------------
+// The pencil button in the header opens a modal dialog containing the tenant
+// override controls (demo-only). All the IDs inside the modal are the same ones
+// renderTenantStatus/activateTenant/deactivateTenant already use.
+
+let tenantModalLastFocus = null
+
+function openTenantModal() {
+  const modal = document.getElementById('tenant-modal')
+  if (!modal) return
+  tenantModalLastFocus = document.activeElement
+  modal.hidden = false
+  const firstInput = document.getElementById('tenant-baseurl')
+  if (firstInput) firstInput.focus()
+}
+
+function closeTenantModal() {
+  const modal = document.getElementById('tenant-modal')
+  if (!modal || modal.hidden) return
+  modal.hidden = true
+  if (tenantModalLastFocus && typeof tenantModalLastFocus.focus === 'function') {
+    tenantModalLastFocus.focus()
+  }
+  tenantModalLastFocus = null
+}
+
 function initTenantControl() {
   const activate = document.getElementById('tenant-activate')
   const deactivate = document.getElementById('tenant-deactivate')
   if (activate) activate.addEventListener('click', activateTenant)
   if (deactivate) deactivate.addEventListener('click', deactivateTenant)
 
-  // Pencil button in the header smooth-scrolls to the Tenant section.
+  // Pencil button in the header opens the tenant modal.
   const edit = document.getElementById('tenant-edit')
   if (edit) {
     edit.addEventListener('click', ev => {
-      const target = document.getElementById('tenant-panel')
-      if (!target) return
       ev.preventDefault()
-      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })
-      history.replaceState(null, '', '#tenant-panel')
+      openTenantModal()
     })
   }
+
+  const modal = document.getElementById('tenant-modal')
+  const closeBtn = document.getElementById('tenant-modal-close')
+  if (closeBtn) closeBtn.addEventListener('click', closeTenantModal)
+  if (modal) {
+    // Click on the backdrop (outside the dialog) closes the modal.
+    modal.addEventListener('click', ev => {
+      if (ev.target === modal) closeTenantModal()
+    })
+  }
+  // Escape closes the modal.
+  document.addEventListener('keydown', ev => {
+    if (ev.key === 'Escape') closeTenantModal()
+  })
 }
 
 async function setDelay(delay) {

@@ -23,7 +23,7 @@
         <div class="hostbar-row">
           <span class="label">Connected tenant:</span>
           <code id="tenant-origin">…</code>
-          <a href="#tenant-panel" id="tenant-edit" class="tenant-edit" title="Edit tenant" aria-label="Edit tenant">✏️</a>
+          <button type="button" id="tenant-edit" class="tenant-edit" title="Edit tenant" aria-label="Edit tenant" aria-haspopup="dialog">✏️</button>
           <span id="tenant-badge" class="tenant-badge tenant-default">default</span>
         </div>
       </div>
@@ -84,48 +84,6 @@
       <p class="muted tiny">
         For every endpoint below, you then only configure its
         <code>path</code> and select the communication system you just created.
-      </p>
-    </section>
-
-    <!-- Temporary tenant override (demo convenience) -->
-    <section class="panel" id="tenant-panel">
-      <h2>🔶 Tenant (temporary)</h2>
-      <p class="muted">
-        Here you can enter tenant details which will temporarily point the
-        microservice to the provided tenant. After 15 minutes or if you press
-        &ldquo;Deactivate&rdquo; it will default back to the default host
-        (<code id="tenant-default-host">…</code>).
-      </p>
-
-      <div class="pm-group">
-        <div class="pm-input-row">
-          <label class="pm-input-label" for="tenant-baseurl">Base URL</label>
-          <input class="pm-input" id="tenant-baseurl" type="url"
-                 placeholder="https://your-tenant.crm.cloud.sap" autocomplete="off" />
-        </div>
-        <div class="pm-input-row">
-          <label class="pm-input-label" for="tenant-username">Username</label>
-          <input class="pm-input" id="tenant-username" type="text"
-                 placeholder="communication user" autocomplete="off" />
-        </div>
-        <div class="pm-input-row">
-          <label class="pm-input-label" for="tenant-password">Password</label>
-          <input class="pm-input" id="tenant-password" type="password"
-                 placeholder="••••••••" autocomplete="new-password" />
-        </div>
-        <div class="pm-row">
-          <button class="pm-btn" id="tenant-activate">Activate (15 min)</button>
-          <button class="pm-btn" id="tenant-deactivate">Deactivate</button>
-        </div>
-        <p class="pm-status" id="tenant-status"></p>
-      </div>
-
-      <p class="muted tiny">
-        In-memory &amp; demo-only: resets on restart, affects one instance, and
-        is not persisted. Credentials are sent to the microservice over the
-        current connection and are never stored server-side or echoed back
-        (the values you type stay only in these form fields). Credentials of the
-        microservice itself are securely stored in environment variables on the backend.
       </p>
     </section>
 
@@ -270,6 +228,52 @@ cf logs crm-extension-hub --recent</code></pre>
       </p>
     </div>
   </footer>
+
+  <!-- Temporary tenant override (demo convenience) — opened via the ✏️ button
+       next to "Connected tenant:" in the header. -->
+  <div id="tenant-modal" class="modal-overlay" hidden>
+    <div class="modal-dialog panel" role="dialog" aria-modal="true" aria-labelledby="tenant-modal-title">
+      <button type="button" class="modal-close" id="tenant-modal-close" title="Close" aria-label="Close">×</button>
+      <h2 id="tenant-modal-title">🔶 Tenant (temporary)</h2>
+      <p class="muted">
+        Here you can enter tenant details which will temporarily point the
+        microservice to the provided tenant. After 15 minutes or if you press
+        &ldquo;Deactivate&rdquo; it will default back to the default host
+        (<code id="tenant-default-host">…</code>).
+      </p>
+
+      <div class="pm-group">
+        <div class="pm-input-row">
+          <label class="pm-input-label" for="tenant-baseurl">Base URL</label>
+          <input class="pm-input" id="tenant-baseurl" type="url"
+                 placeholder="https://your-tenant.crm.cloud.sap" autocomplete="off" />
+        </div>
+        <div class="pm-input-row">
+          <label class="pm-input-label" for="tenant-username">Username</label>
+          <input class="pm-input" id="tenant-username" type="text"
+                 placeholder="communication user" autocomplete="off" />
+        </div>
+        <div class="pm-input-row">
+          <label class="pm-input-label" for="tenant-password">Password</label>
+          <input class="pm-input" id="tenant-password" type="password"
+                 placeholder="••••••••" autocomplete="new-password" />
+        </div>
+        <div class="pm-row">
+          <button class="pm-btn" id="tenant-activate">Activate (15 min)</button>
+          <button class="pm-btn" id="tenant-deactivate">Deactivate</button>
+        </div>
+        <p class="pm-status" id="tenant-status"></p>
+      </div>
+
+      <p class="muted tiny">
+        In-memory &amp; demo-only: resets on restart, affects one instance, and
+        is not persisted. Credentials are sent to the microservice over the
+        current connection and are never stored server-side or echoed back
+        (the values you type stay only in these form fields). Credentials of the
+        microservice itself are securely stored in environment variables on the backend.
+      </p>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>
