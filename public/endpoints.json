@@ -43,7 +43,7 @@
         "In SSC V2, open System Settings → Autoflow.",
         "Create a new AutoFlow for the Account entity.",
         "Set the event type to \"Update Account\"",
-        "Configure the condition to check if the current ABC Classification is not equal the previous ABC classification.",
+        "Configure the condition to check if the current ABC Classification 'is not changed'",
         "Add an Event Notification",
         "Enter any event name, select your communication system, and copy only the path from above.",
         "Save and activate the autoflow",
@@ -107,7 +107,8 @@
         "Add a new communication configuration, select your communication system, give it a name, scroll down to HTTP Data and search for 'GET Alert Messages'",
         "Enter the above path in the newly added HTTP data entry",
         "Save and activate.",
-        "Open the Agent Desktop feature, search for any contact, accept it and see the newly displayed alerts in the left side."
+        "Open the Agent Desktop feature, search for any contact, accept it and wait until the Agent Desktop opened.",
+        "You first need to add the 'Business Alerts' section on the left via tha adaptation mode and then you can see the external alerts displaying."
       ],
       "sample": {
         "data": {
@@ -194,7 +195,8 @@
         "Copy an account's technical ID (UUID) from SSC V2 and paste it into the Account UUID field below.",
         "Optionally adjust the message and score, then click 'Post Signal'.",
         "Open that account in SSC V2 and check the 360 view / Insights area to see the external highlight appear.",
-        "This is only one example — the full REST API catalogue with Swagger examples is in the official documentation (linked above)."
+        "In order to display the Highlights section properly you need to configure first fiscal periods in your system.",
+        "This is only one API example — the full REST API catalogue with Swagger examples is in the official documentation (linked above)."
       ]
     }
   ]

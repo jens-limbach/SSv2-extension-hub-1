@@ -180,17 +180,28 @@ function calculateScore(abcClassification) {
  * Creates a follow-up task linked to an opportunity in CRM.
  * The task is assigned to the opportunity owner and due in 3 days.
  */
-async function createUrgentOpportunityTask(opportunityId, opportunityDisplayId, ownerId) {
+async function createUrgentOpportunityTask(opportunityId, ownerId, accountId) {
   const dueDate = new Date()
   dueDate.setDate(dueDate.getDate() + 3)
   const dueDateTime = dueDate.toISOString().replace(/\.\d{3}/, '')
 
   const taskPayload = {
-    subject: `Follow up: Urgent Opportunity – ${opportunityDisplayId}`,
+    description: `Follow up: Urgent Opportunity`,
     status: 'OPEN',
     dueDateTime,
-    opportunity: { id: opportunityId },
-    owner: { id: ownerId }
+    owner: { id: ownerId },
+    relatedObjects: [
+      {
+        objectId: opportunityId,
+        role: 'PREDECESSOR',
+        type: '72'
+      }
+    ]
+  }
+
+  // Carry over the account from the opportunity so the task is linked to it too.
+  if (accountId) {
+    taskPayload.account = { id: accountId }
   }
 
   const response = await callCrmApi('/sap/c4c/api/v1/task-service/tasks', {
@@ -482,8 +493,8 @@ app.post('/webhooks/create-urgent-opportunity-task', async (req, res) => {
 
         const taskDisplayId = await createUrgentOpportunityTask(
           currentImage.id,
-          currentImage.displayId,
-          currentImage.ownerId
+          currentImage.owner?.id,
+          currentImage.account?.id
         )
 
         console.log(`✅ Follow-up task created: ${taskDisplayId} for opportunity ${currentImage.displayId}`)
