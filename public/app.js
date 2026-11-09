@@ -654,6 +654,26 @@ function buildPostMessageDemo() {
     { event: 'refreshEvent', operation: 'triggerMashupEvent' }, status
   ))
   refreshRow.appendChild(refreshBtn)
+
+  // Error Messages — sends a mashup-initiated notification via showMessage.
+  const errorMsgBtn = el('button', { class: 'pm-btn', text: 'Error Messages' })
+  errorMsgBtn.addEventListener('click', () => sendPostMessage(
+    {
+      operation: 'showMessage',
+      params: {
+        message: 'This is an example error message.',
+        severity: 'ERROR',
+        details: [
+          { message: 'This is an example error detail.', severity: 'ERROR' },
+          { message: 'This is an example warning detail.', severity: 'WARNING' },
+          { message: 'This is an example info detail.', severity: 'INFO' },
+          { message: 'This is an example success detail.', severity: 'SUCCESS' }
+        ]
+      }
+    }, status
+  ))
+  refreshRow.appendChild(errorMsgBtn)
+
   otherGroup.appendChild(refreshRow)
   wrap.appendChild(otherGroup)
 
