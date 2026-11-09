@@ -2,6 +2,7 @@
 applications:
 - name: crm-extension-hub
   memory: 128M
+  disk_quota: 256M
   instances: 1
   buildpack: nodejs_buildpack
   command: node server.js
