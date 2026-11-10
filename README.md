@@ -2,6 +2,8 @@
 
 A minimal Express-based webhook microservice for SAP Sales and Service Cloud V2 (SSC V2). Demonstrates the key extension patterns available in SSC V2: synchronous external hooks, asynchronous autoflows, custom key metrics and business alerts.
 
+[TL;DR] Too long; didn't read? Directly jump to the [video tutorial](https://sapvideo.cfapps.eu10-004.hana.ondemand.com/?entry_id=1_yqed6bq5) that explains it all. In the first two minutes I explain the concept and after that I walk you through the detailed setup and testing steps. You can also check out my [blog](https://community.sap.com/t5/crm-and-cx-blog-posts-by-sap/extension-hub-learning-example-incl-github-video/ba-p/14519577) about the extension hub example.
+
 ## 🚀 Quick Start
 
 Get from zero to a running microservice in five steps with a simple web interface that leads you step by step through the configuration.
